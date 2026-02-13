@@ -88,3 +88,18 @@ variable "vpn_vpc_id" {
   description = "VPN VPC ID (for tagging PHZ association purposes)"
   type        = string
 }
+
+variable "tfc_agent_vpc_rt_ids" {
+  description = "List of Terraform Cloud Agent VPC Route Table IDs to associate with the Transit Gateway attachment"
+  type        = list(string)
+}
+
+variable "vpn_vpc_rt_ids" {
+  description = "List of VPN VPC Route Table IDs to associate with the Transit Gateway attachment"
+  type        = list(string)
+}
+
+variable "dns_vpc_rt_ids" {
+  description = "List of DNS VPC Route Table IDs to associate with the Transit Gateway attachment"
+  type        = list(string)
+}

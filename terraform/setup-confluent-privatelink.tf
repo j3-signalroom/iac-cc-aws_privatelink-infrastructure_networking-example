@@ -33,20 +33,23 @@ module "sandbox_vpc_privatelink" {
   dns_domain               = confluent_private_link_attachment.non_prod.dns_domain
   
   # VPN configuration
-  vpn_vpc_id          = var.vpn_vpc_id
-  vpn_client_vpc_cidr = data.aws_ec2_client_vpn_endpoint.client_vpn.client_cidr_block
-  vpn_vpc_cidr        = data.aws_vpc.vpn.cidr_block
-
+  vpn_vpc_id               = var.vpn_vpc_id
+  vpn_vpc_rt_ids           = local.vpn_vpc_rt_ids
+  vpn_client_vpc_cidr      = data.aws_ec2_client_vpn_endpoint.client_vpn.client_cidr_block
+  vpn_vpc_cidr             = data.aws_vpc.vpn.cidr_block
+  
   # Confluent Cloud configuration
   confluent_environment_id = confluent_environment.non_prod.id
   confluent_platt_id       = confluent_private_link_attachment.non_prod.id
 
   # Terraform Cloud Agent configuration
   tfc_agent_vpc_id         = var.tfc_agent_vpc_id 
+  tfc_agent_vpc_rt_ids     = local.tfc_agent_vpc_rt_ids
   tfc_agent_vpc_cidr       = data.aws_vpc.tfc_agent.cidr_block
 
   # DNS configuration
   dns_vpc_id               = var.dns_vpc_id
+  dns_vpc_rt_ids           = local.dns_vpc_rt_ids
   dns_vpc_cidr             = data.aws_vpc.dns.cidr_block
 
   # Use shared PHZ
@@ -77,9 +80,10 @@ module "shared_vpc_privatelink" {
   dns_domain               = confluent_private_link_attachment.non_prod.dns_domain
   
   # VPN configuration
-  vpn_vpc_id          = var.vpn_vpc_id
-  vpn_client_vpc_cidr = data.aws_ec2_client_vpn_endpoint.client_vpn.client_cidr_block
-  vpn_vpc_cidr        = data.aws_vpc.vpn.cidr_block
+  vpn_vpc_id               = var.vpn_vpc_id
+  vpn_vpc_rt_ids           = local.vpn_vpc_rt_ids
+  vpn_client_vpc_cidr      = data.aws_ec2_client_vpn_endpoint.client_vpn.client_cidr_block
+  vpn_vpc_cidr             = data.aws_vpc.vpn.cidr_block
   
   # Confluent Cloud configuration
   confluent_environment_id = confluent_environment.non_prod.id
@@ -87,10 +91,12 @@ module "shared_vpc_privatelink" {
 
   # Terraform Cloud Agent configuration
   tfc_agent_vpc_id         = var.tfc_agent_vpc_id 
+  tfc_agent_vpc_rt_ids     = local.tfc_agent_vpc_rt_ids
   tfc_agent_vpc_cidr       = data.aws_vpc.tfc_agent.cidr_block
 
   # DNS configuration
   dns_vpc_id               = var.dns_vpc_id
+  dns_vpc_rt_ids           = local.dns_vpc_rt_ids
   dns_vpc_cidr             = data.aws_vpc.dns.cidr_block
 
   # Use shared PHZ
