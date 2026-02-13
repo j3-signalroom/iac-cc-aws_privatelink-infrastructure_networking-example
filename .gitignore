@@ -57,6 +57,7 @@ override.tf.json
 terraform.rc
 
 tfplan
+tfplan.*
 
 # ==========================================
 # AWS & Cloud
