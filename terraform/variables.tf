@@ -83,11 +83,21 @@ variable "tfc_agent_vpc_id" {
   type        = string
 }
 
+variable "tfc_agent_vpc_rt_ids" {
+  description = "Comma-separated list of Terraform Cloud Agent VPC Route Table IDs to associate with the Transit Gateway attachment"
+  type        = string
+}
+
 # ===================================================
 # DNS VPC CONFIGURATION
 # ===================================================
 variable "dns_vpc_id" {
   description = "Enterprise (centralized) DNS VPC ID - Private Hosted Zones will be associated with this VPC"
+  type        = string
+}
+
+variable "dns_vpc_rt_ids" {
+  description = "Comma-separated list of Enterprise (centralized) DNS VPC Route Table IDs to associate with the Transit Gateway attachment"
   type        = string
 }
 
@@ -109,5 +119,10 @@ variable "tgw_rt_id" {
 # ===================================================
 variable "vpn_vpc_id" {
   description = "VPN Client VPC ID - Private Hosted Zones will be associated with this VPC"
+  type        = string
+}
+
+variable "vpn_vpc_rt_ids" {
+  description = "Comma-separated list of VPN Client VPC Route Table IDs to associate with the Transit Gateway attachment"
   type        = string
 }

@@ -16,3 +16,9 @@ data "aws_ec2_client_vpn_endpoint" "client_vpn" {
     values = ["client-vpn"]
   }
 }
+
+locals {
+  tfc_agent_vpc_rt_ids = length(var.tfc_agent_vpc_rt_ids) > 0 ? split(",", var.tfc_agent_vpc_rt_ids) : []
+  dns_vpc_rt_ids       = length(var.dns_vpc_rt_ids) > 0 ? split(",", var.dns_vpc_rt_ids) : []
+  vpn_vpc_rt_ids       = length(var.vpn_vpc_rt_ids) > 0 ? split(",", var.vpn_vpc_rt_ids) : []
+}

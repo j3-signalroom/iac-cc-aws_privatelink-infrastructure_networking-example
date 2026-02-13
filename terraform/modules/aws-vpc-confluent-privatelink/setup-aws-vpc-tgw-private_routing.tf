@@ -79,8 +79,21 @@ resource "aws_ec2_transit_gateway_route_table_propagation" "privatelink" {
 # Add route to TFC Agent VPC via Transit Gateway
 resource "aws_route" "privatelink_to_tfc_agent" {
   count = var.subnet_count
+
   route_table_id         = aws_route_table.private[count.index].id
   destination_cidr_block = var.tfc_agent_vpc_cidr
+  transit_gateway_id     = var.tgw_id
+
+  depends_on = [
+    aws_ec2_transit_gateway_vpc_attachment.privatelink
+  ]
+}
+
+resource "aws_route" "tfc_agent_to_privatelink" {
+  count = length(var.tfc_agent_vpc_rt_ids) > 0 ? length(var.tfc_agent_vpc_rt_ids) : 0
+  
+  route_table_id         = element(var.tfc_agent_vpc_rt_ids, count.index)
+  destination_cidr_block = aws_vpc.privatelink.cidr_block
   transit_gateway_id     = var.tgw_id
 
   depends_on = [
@@ -114,12 +127,37 @@ resource "aws_route" "privatelink_to_vpn_vpc" {
   ]
 }
 
+resource "aws_route" "vpn_to_privatelink" {
+  count = length(var.vpn_vpc_rt_ids) > 0 ? length(var.vpn_vpc_rt_ids) : 0
+  
+  route_table_id         = element(var.vpn_vpc_rt_ids, count.index)
+  destination_cidr_block = aws_vpc.privatelink.cidr_block
+  transit_gateway_id     = var.tgw_id
+
+  depends_on = [
+    aws_ec2_transit_gateway_vpc_attachment.privatelink
+  ]
+}
+
+
 # Add route to DNS VPC via Transit Gateway
 resource "aws_route" "privatelink_to_dns" {
   count = var.subnet_count
   
   route_table_id         = aws_route_table.private[count.index].id
   destination_cidr_block = var.dns_vpc_cidr
+  transit_gateway_id     = var.tgw_id
+
+  depends_on = [
+    aws_ec2_transit_gateway_vpc_attachment.privatelink
+  ]
+}
+
+resource "aws_route" "dns_to_privatelink" {
+  count = length(var.dns_vpc_rt_ids) > 0 ? length(var.dns_vpc_rt_ids) : 0
+
+  route_table_id         = element(var.dns_vpc_rt_ids, count.index)
+  destination_cidr_block = aws_vpc.privatelink.cidr_block
   transit_gateway_id     = var.tgw_id
 
   depends_on = [
