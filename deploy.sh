@@ -291,9 +291,9 @@ deploy_infrastructure() {
     # \ndns_vpc_id=\"${dns_vpc_id}\"\
     # \ntfc_agent_vpc_id=\"${tfc_agent_vpc_id}\"\
     # \nvpn_vpc_id=\"${vpn_vpc_id}\"\
-    # \ntfc_agent_vpc_rt_ids=\"${tfc_agent_vpc_rt_ids}\"\
-    # \ndns_vpc_rt_ids=\"${dns_vpc_rt_ids}\"\
-    # \nvpn_vpc_rt_ids=\"${vpn_vpc_rt_ids}\"\
+    # \ntfc_agent_vpc_rt_ids=${tfc_agent_vpc_rt_ids}\
+    # \ndns_vpc_rt_ids=${dns_vpc_rt_ids}\
+    # \nvpn_vpc_rt_ids=${vpn_vpc_rt_ids}\
     # \ntgw_id=\"${tgw_id}\"
     # \ntgw_rt_id=\"${tgw_rt_id}\"" > terraform.tfvars
 
@@ -311,9 +311,9 @@ deploy_infrastructure() {
     export TF_VAR_vpn_vpc_id="${vpn_vpc_id}"
     export TF_VAR_dns_vpc_id="${dns_vpc_id}"
     export TF_VAR_tfc_agent_vpc_id="${tfc_agent_vpc_id}"
-    export TF_VAR_tfc_agent_vpc_rt_ids="${tfc_agent_vpc_rt_ids}"
-    export TF_VAR_dns_vpc_rt_ids="${dns_vpc_rt_ids}"
-    export TF_VAR_vpn_vpc_rt_ids="${vpn_vpc_rt_ids}"
+    export TF_VAR_tfc_agent_vpc_rt_ids=${tfc_agent_vpc_rt_ids}
+    export TF_VAR_dns_vpc_rt_ids=${dns_vpc_rt_ids}
+    export TF_VAR_vpn_vpc_rt_ids=${vpn_vpc_rt_ids}
 
     # Initialize Terraform
     print_info "Initializing Terraform..."
@@ -370,9 +370,9 @@ undeploy_infrastructure() {
     export TF_VAR_vpn_vpc_id="${vpn_vpc_id}"
     export TF_VAR_dns_vpc_id="${dns_vpc_id}"
     export TF_VAR_tfc_agent_vpc_id="${tfc_agent_vpc_id}"
-    export TF_VAR_tfc_agent_vpc_rt_ids="${tfc_agent_vpc_rt_ids}"
-    export TF_VAR_dns_vpc_rt_ids="${dns_vpc_rt_ids}"
-    export TF_VAR_vpn_vpc_rt_ids="${vpn_vpc_rt_ids}"
+    export TF_VAR_tfc_agent_vpc_rt_ids=${tfc_agent_vpc_rt_ids}
+    export TF_VAR_dns_vpc_rt_ids=${dns_vpc_rt_ids}
+    export TF_VAR_vpn_vpc_rt_ids=${vpn_vpc_rt_ids}
 
     # Destroy
     print_info "Running Terraform destroy..."
