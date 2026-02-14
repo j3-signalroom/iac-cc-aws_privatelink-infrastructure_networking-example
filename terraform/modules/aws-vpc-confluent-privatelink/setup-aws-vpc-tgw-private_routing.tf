@@ -1,6 +1,3 @@
-# ============================================================================
-# VPC, SUBNETS, AND ROUTE TABLES FOR PRIVATELINK
-# ============================================================================
 resource "aws_vpc" "privatelink" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
@@ -28,6 +25,7 @@ resource "aws_subnet" "private" {
 # Handles multiple private subnets by creating a route table for each subnet
 resource "aws_route_table" "private" {
   count  = var.subnet_count
+  
   vpc_id = aws_vpc.privatelink.id
   
   tags = {
@@ -72,10 +70,6 @@ resource "aws_ec2_transit_gateway_route_table_propagation" "privatelink" {
   transit_gateway_route_table_id = var.tgw_rt_id
 }
 
-# =================================================================================
-# ROUTE TABLE UPDATES FOR TRANSIT GATEWAY CONNECTIVITY FOR TFC AGENT, VPN, AND DNS
-# =================================================================================
-#
 # Add route to TFC Agent VPC via Transit Gateway
 resource "aws_route" "privatelink_to_tfc_agent" {
   count = var.subnet_count
