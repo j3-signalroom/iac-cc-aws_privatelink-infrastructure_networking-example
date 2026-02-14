@@ -32,3 +32,13 @@ output "confluent_environment_id" {
   description = "Confluent Cloud Environment ID"
   value       = confluent_environment.non_prod.id
 } 
+
+output "confluent_sandbox_kafka_cluster_id" {
+  description = "Confluent Cloud Sandbox Kafka Cluster ID"
+  value       = confluent_kafka_cluster.sandbox_cluster.id
+}
+
+output "confluent_shared_kafka_cluster_id" {
+  description = "Confluent Cloud Shared Kafka Cluster ID"
+  value       = confluent_kafka_cluster.shared_cluster.id
+}
