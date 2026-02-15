@@ -17,6 +17,8 @@
 #                                --dns-vpc-rt-ids=<DNS_VPC_RT_IDs>
 #                                --vpn-vpc-id=<VPN_VPC_ID>
 #                                --vpn-vpc-rt-ids=<VPN_VPC_RT_IDs>
+#                                --vpn-endpoint-id=<VPN_ENDPOINT_ID>
+#                                --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs>
 #
 #
 
@@ -84,6 +86,8 @@ dns_vpc_id=""
 dns_vpc_rt_ids=""
 vpn_vpc_id=""
 vpn_vpc_rt_ids=""
+vpn_endpoint_id=""
+vpn_target_subnet_ids=""
 
 
 # Get the arguments passed by shift to remove the first word
@@ -127,6 +131,12 @@ do
         *"--vpn-vpc-rt-ids="*)
             arg_length=17
             vpn_vpc_rt_ids=${arg:$arg_length:$(expr ${#arg} - $arg_length)};;
+        *"--vpn-endpoint-id="*)
+            arg_length=18
+            vpn_endpoint_id=${arg:$arg_length:$(expr ${#arg} - $arg_length)};;
+        *"--vpn-target-subnet-ids="*)
+            arg_length=24
+            vpn_target_subnet_ids=${arg:$arg_length:$(expr ${#arg} - $arg_length)};;
     esac
 done
 
@@ -262,6 +272,28 @@ then
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
 
+# Check required --vpn-endpoint-id argument was supplied
+if [ -z "$vpn_endpoint_id" ]
+then
+    echo
+    print_error "(Error Message 014)  You did not include the proper use of the --vpn-endpoint-id=<VPN_ENDPOINT_ID> argument in the call."
+    echo
+    print_error "Usage:  Require all twelve arguments ---> `basename $0 $1` $argument_list"
+    echo
+    exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
+fi
+
+# Check required --vpn-target-subnet-ids argument was supplied
+if [ -z "$vpn_target_subnet_ids" ]
+then
+    echo
+    print_error "(Error Message 015)  You did not include the proper use of the --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs> argument in the call."
+    echo
+    print_error "Usage:  Require all twelve arguments ---> `basename $0 $1` $argument_list"
+    echo
+    exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
+fi
+
 
 # Get the AWS SSO credential variables that are used by the AWS CLI commands to authenicate
 print_step "Authenticating to AWS SSO profile: $AWS_PROFILE..."
@@ -294,6 +326,8 @@ deploy_infrastructure() {
     # \ntfc_agent_vpc_rt_ids=${tfc_agent_vpc_rt_ids}\
     # \ndns_vpc_rt_ids=${dns_vpc_rt_ids}\
     # \nvpn_vpc_rt_ids=${vpn_vpc_rt_ids}\
+    # \nvpn_endpoint_id=\"${vpn_endpoint_id}\"\
+    # \nvpn_target_subnet_ids=\"${vpn_target_subnet_ids}\"\
     # \ntgw_id=\"${tgw_id}\"
     # \ntgw_rt_id=\"${tgw_rt_id}\"" > terraform.tfvars
 
@@ -314,6 +348,8 @@ deploy_infrastructure() {
     export TF_VAR_tfc_agent_vpc_rt_ids=${tfc_agent_vpc_rt_ids}
     export TF_VAR_dns_vpc_rt_ids=${dns_vpc_rt_ids}
     export TF_VAR_vpn_vpc_rt_ids=${vpn_vpc_rt_ids}
+    export TF_VAR_vpn_endpoint_id="${vpn_endpoint_id}"
+    export TF_VAR_vpn_target_subnet_ids="${vpn_target_subnet_ids}"
 
     # Initialize Terraform
     print_info "Initializing Terraform..."
@@ -373,6 +409,8 @@ undeploy_infrastructure() {
     export TF_VAR_tfc_agent_vpc_rt_ids=${tfc_agent_vpc_rt_ids}
     export TF_VAR_dns_vpc_rt_ids=${dns_vpc_rt_ids}
     export TF_VAR_vpn_vpc_rt_ids=${vpn_vpc_rt_ids}
+    export TF_VAR_vpn_endpoint_id="${vpn_endpoint_id}"
+    export TF_VAR_vpn_target_subnet_ids="${vpn_target_subnet_ids}"
 
     # Destroy
     print_info "Running Terraform destroy..."

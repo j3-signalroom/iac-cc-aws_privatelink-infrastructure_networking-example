@@ -158,3 +158,25 @@ resource "aws_route" "dns_to_privatelink" {
     aws_ec2_transit_gateway_vpc_attachment.privatelink
   ]
 }
+
+# ============================================================================
+# CLIENT VPN ROUTES TO PRIVATELINK VPC
+# ============================================================================
+#
+# Add Client VPN routes so VPN clients can reach this PrivateLink VPC
+resource "aws_ec2_client_vpn_route" "to_privatelink" {
+  count = var.vpn_endpoint_id != null ? length(var.vpn_target_subnet_ids) : 0
+
+  client_vpn_endpoint_id = var.vpn_endpoint_id
+  destination_cidr_block = aws_vpc.privatelink.cidr_block
+  target_vpc_subnet_id   = var.vpn_target_subnet_ids[count.index]
+}
+
+# Authorize VPN clients to access this PrivateLink VPC
+resource "aws_ec2_client_vpn_authorization_rule" "to_privatelink" {
+  count = var.vpn_endpoint_id != null ? 1 : 0
+
+  client_vpn_endpoint_id = var.vpn_endpoint_id
+  target_network_cidr    = aws_vpc.privatelink.cidr_block
+  authorize_all_groups   = true
+}

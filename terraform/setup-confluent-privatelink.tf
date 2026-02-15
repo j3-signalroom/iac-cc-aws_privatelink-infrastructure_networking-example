@@ -37,7 +37,9 @@ module "sandbox_vpc_privatelink" {
   vpn_vpc_rt_ids           = local.vpn_vpc_rt_ids
   vpn_client_vpc_cidr      = data.aws_ec2_client_vpn_endpoint.client_vpn.client_cidr_block
   vpn_vpc_cidr             = data.aws_vpc.vpn.cidr_block
-  
+  vpn_endpoint_id          = var.vpn_endpoint_id
+  vpn_target_subnet_ids    = local.vpn_target_subnet_ids
+
   # Confluent Cloud configuration
   confluent_environment_id = confluent_environment.non_prod.id
   confluent_platt_id       = confluent_private_link_attachment.non_prod.id
@@ -84,7 +86,9 @@ module "shared_vpc_privatelink" {
   vpn_vpc_rt_ids           = local.vpn_vpc_rt_ids
   vpn_client_vpc_cidr      = data.aws_ec2_client_vpn_endpoint.client_vpn.client_cidr_block
   vpn_vpc_cidr             = data.aws_vpc.vpn.cidr_block
-  
+  vpn_endpoint_id          = var.vpn_endpoint_id
+  vpn_target_subnet_ids    = local.vpn_target_subnet_ids
+
   # Confluent Cloud configuration
   confluent_environment_id = confluent_environment.non_prod.id
   confluent_platt_id       = confluent_private_link_attachment.non_prod.id
