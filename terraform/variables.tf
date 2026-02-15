@@ -126,3 +126,13 @@ variable "vpn_vpc_rt_ids" {
   description = "Comma-separated list of VPN Client VPC Route Table IDs to associate with the Transit Gateway attachment"
   type        = string
 }
+
+variable "vpn_endpoint_id" {
+  description = "VPN Endpoint ID for adding routes to PrivateLink VPCs"
+  type        = string
+}
+
+variable "vpn_target_subnet_ids" {
+  description = "Comma-separated list of VPN associated subnet IDs to create routes through"
+  type        = string
+}
