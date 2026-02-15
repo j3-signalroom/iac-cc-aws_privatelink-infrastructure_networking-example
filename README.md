@@ -1,176 +1,5 @@
-# IaC Confluent Cloud AWS Private Linking with Cluster Linking Example
-
-```mermaid
-%%{init: {'theme': 'default', 'themeVariables': {'background': '#ffffff', 'primaryColor': '#dbeafe', 'lineColor': '#64748b', 'textColor': '#1e293b'}, 'flowchart': {'curve': 'basis'}}}%%
-
-graph TB
-    %% ============================================================
-    %% STYLING — Light backgrounds, bold borders, dark text
-    %% ============================================================
-    classDef confluentCloud fill:#dbeafe,stroke:#1d4ed8,stroke-width:2px,color:#1e3a8a
-    classDef vpcBox fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
-    classDef networking fill:#eff6ff,stroke:#2563eb,stroke-width:1.5px,color:#1e3a8a
-    classDef dns fill:#ede9fe,stroke:#7c3aed,stroke-width:1.5px,color:#4c1d95
-    classDef secrets fill:#fce7f3,stroke:#db2777,stroke-width:1.5px,color:#831843
-    classDef tfCloud fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#581c87
-    classDef dataFlow fill:#d1fae5,stroke:#059669,stroke-width:1.5px,color:#064e3b
-    classDef module fill:#ffedd5,stroke:#ea580c,stroke-width:2px,color:#7c2d12,stroke-dasharray:5
-
-    %% ============================================================
-    %% TERRAFORM CLOUD
-    %% ============================================================
-    subgraph TFC["Terraform Cloud - signalroom org"]
-        direction LR
-        TFC_WORKSPACE["Workspace<br/>iac-cc-aws-privatelink-<br/>cluster-linking-example"]
-        TFC_AGENT_POOL["Agent Pool<br/>signalroom-iac-tfc-agents-pool"]
-        TFC_WORKSPACE --- TFC_AGENT_POOL
-    end
-    TFC_WORKSPACE:::tfCloud
-    TFC_AGENT_POOL:::tfCloud
-
-    %% ============================================================
-    %% CONFLUENT CLOUD
-    %% ============================================================
-    subgraph CC["Confluent Cloud"]
-        direction TB
-
-        CC_ENV["Environment: non-prod<br/>Stream Governance: Essentials"]:::confluentCloud
-
-        subgraph CC_SR["Schema Registry"]
-            SR_CLUSTER["Schema Registry Cluster<br/>src_api service account<br/>DeveloperRead + DeveloperWrite"]:::confluentCloud
-        end
-
-        CC_PLATT["PrivateLink Attachment<br/>AWS region"]:::confluentCloud
-
-        subgraph CC_SANDBOX["Sandbox Cluster - Enterprise / HIGH"]
-            direction TB
-            SANDBOX_CLUSTER["sandbox_cluster<br/>Enterprise, High Availability"]:::confluentCloud
-            SANDBOX_TOPIC["Topic: dev-stock_trades"]:::dataFlow
-            SANDBOX_DATAGEN["DataGen Source Connector<br/>STOCK_TRADES to AVRO"]:::dataFlow
-            SANDBOX_SA["Service Accounts<br/>app_manager, app_producer<br/>app_consumer, app_connector"]:::confluentCloud
-            SANDBOX_DATAGEN -->|produces| SANDBOX_TOPIC
-        end
-
-        subgraph CC_SHARED["Shared Cluster - Enterprise / HIGH"]
-            direction TB
-            SHARED_CLUSTER["shared_cluster<br/>Enterprise, High Availability"]:::confluentCloud
-            MIRROR_TOPIC["Mirror Topic<br/>dev-stock_trades"]:::dataFlow
-            SHARED_SA["Service Accounts<br/>app_manager, app_consumer"]:::confluentCloud
-        end
-
-        subgraph CC_CL["Cluster Linking - Bidirectional"]
-            CL_LINK["Bidirectional Cluster Link<br/>sandbox to shared<br/>sandbox_cluster_linking_app_manager<br/>shared_cluster_linking_app_manager"]:::confluentCloud
-        end
-
-        CC_ENV --> CC_PLATT
-        CC_ENV --> SANDBOX_CLUSTER
-        CC_ENV --> SHARED_CLUSTER
-        CC_ENV --> SR_CLUSTER
-        SANDBOX_TOPIC -.->|mirror via cluster link| MIRROR_TOPIC
-        CL_LINK --- SANDBOX_CLUSTER
-        CL_LINK --- SHARED_CLUSTER
-    end
-
-    %% ============================================================
-    %% AWS ACCOUNT
-    %% ============================================================
-    subgraph AWS["AWS Account"]
-        direction TB
-
-        TGW["Transit Gateway<br/>Central hub for all VPC routing"]:::networking
-        TGW_RT["TGW Route Table<br/>Associations + Propagations"]:::networking
-        TGW --- TGW_RT
-
-        subgraph SANDBOX_VPC["module: sandbox_vpc_privatelink - VPC 10.0.0.0/20"]
-            direction TB
-            SBX_SUBNETS["3x Private Subnets<br/>across AZs"]:::networking
-            SBX_RT["Route Tables<br/>to TFC Agent VPC<br/>to VPN Client VPC<br/>to VPN VPC, DNS VPC"]:::networking
-            SBX_SG["Security Group<br/>Ingress: 443, 9092, 53"]:::networking
-            SBX_VPCE["VPC Endpoint<br/>Interface type, PrivateLink"]:::networking
-            SBX_TGW_ATT["TGW Attachment"]:::networking
-            SBX_R53_ASSOC["PHZ Association"]:::dns
-            SBX_PLATTC["PL Attachment Connection<br/>confluent_private_link_<br/>attachment_connection"]:::networking
-            SBX_SUBNETS --> SBX_VPCE
-            SBX_SG --> SBX_VPCE
-        end
-
-        subgraph SHARED_VPC["module: shared_vpc_privatelink - VPC 10.1.0.0/20"]
-            direction TB
-            SHR_SUBNETS["3x Private Subnets<br/>across AZs"]:::networking
-            SHR_RT["Route Tables<br/>to TFC Agent VPC<br/>to VPN Client VPC<br/>to VPN VPC, DNS VPC"]:::networking
-            SHR_SG["Security Group<br/>Ingress: 443, 9092, 53"]:::networking
-            SHR_VPCE["VPC Endpoint<br/>Interface type, PrivateLink"]:::networking
-            SHR_TGW_ATT["TGW Attachment"]:::networking
-            SHR_R53_ASSOC["PHZ Association"]:::dns
-            SHR_PLATTC["PL Attachment Connection<br/>confluent_private_link_<br/>attachment_connection"]:::networking
-            SHR_SUBNETS --> SHR_VPCE
-            SHR_SG --> SHR_VPCE
-        end
-
-        TFC_AGENT_VPC["TFC Agent VPC<br/>pre-existing"]:::vpcBox
-        VPN_VPC["VPN VPC<br/>pre-existing"]:::vpcBox
-        DNS_VPC["DNS VPC<br/>pre-existing"]:::vpcBox
-
-        subgraph R53["Route53 - Centralized DNS"]
-            direction TB
-            R53_PHZ["Private Hosted Zone<br/>region.aws.private.confluent.cloud"]:::dns
-            R53_WILDCARD["Wildcard CNAME<br/>*.dns_domain"]:::dns
-            R53_ZONAL["Zonal CNAMEs<br/>*.az-id.dns_domain"]:::dns
-            R53_RESOLVER["System Resolver Rule<br/>confluent_private domain"]:::dns
-            R53_PHZ --> R53_WILDCARD
-            R53_PHZ --> R53_ZONAL
-        end
-
-        subgraph SM["AWS Secrets Manager"]
-            direction LR
-            SM_SR["Schema Registry<br/>API credentials"]:::secrets
-            SM_SANDBOX["Sandbox Cluster<br/>manager, consumer, producer"]:::secrets
-            SM_SHARED["Shared Cluster<br/>manager, consumer"]:::secrets
-        end
-
-        SBX_TGW_ATT ---|attach| TGW
-        SHR_TGW_ATT ---|attach| TGW
-        TFC_AGENT_VPC ---|attach| TGW
-        VPN_VPC ---|attach| TGW
-        DNS_VPC ---|attach| TGW
-
-        R53_PHZ -.->|associate| TFC_AGENT_VPC
-        R53_PHZ -.->|associate| DNS_VPC
-        R53_PHZ -.->|associate| VPN_VPC
-        R53_PHZ -.->|associate| SBX_R53_ASSOC
-        R53_PHZ -.->|associate| SHR_R53_ASSOC
-
-        R53_RESOLVER -.->|rule assoc| TFC_AGENT_VPC
-        R53_RESOLVER -.->|rule assoc| DNS_VPC
-        R53_RESOLVER -.->|rule assoc| VPN_VPC
-        R53_RESOLVER -.->|rule assoc| SANDBOX_VPC
-        R53_RESOLVER -.->|rule assoc| SHARED_VPC
-    end
-
-    %% ============================================================
-    %% CROSS-BOUNDARY CONNECTIONS
-    %% ============================================================
-    SBX_VPCE ==>|AWS PrivateLink| CC_PLATT
-    SHR_VPCE ==>|AWS PrivateLink| CC_PLATT
-    SBX_PLATTC -.->|registers connection| CC_PLATT
-    SHR_PLATTC -.->|registers connection| CC_PLATT
-
-    TFC_AGENT_POOL -.->|runs on| TFC_AGENT_VPC
-
-    subgraph API_KEY_ROT["API Key Rotation Module"]
-        direction LR
-        AKR["iac-confluent-api_key_rotation-tf_module<br/>Auto-rotates keys per day_count schedule"]:::module
-    end
-
-    AKR -.->|manages keys for| SANDBOX_SA
-    AKR -.->|manages keys for| SHARED_SA
-    AKR -.->|manages keys for| SR_CLUSTER
-    AKR -.->|manages keys for| CL_LINK
-
-    AKR -.->|stores credentials| SM
-```
-
-This Terraform configuration demonstrates how to build a fully private, production-grade connectivity architecture between AWS and Confluent Cloud using AWS PrivateLink and Confluent Cluster Linking. It addresses a key architectural constraint: **_Confluent PrivateLink attachments share a non-unique DNS namespace, while AWS Route 53 prevents associating multiple Private Hosted Zones (PHZs) with the same domain name across overlapping VPC associations. As a result, separate PHZs cannot be created per cluster and distributed across interconnected VPCs_**.
+# IaC Confluent Cloud AWS Private Linking, Infrastructure and Networking Example
+This Terraform configuration demonstrates how to build a fully private, production-grade connectivity architecture between AWS and Confluent Cloud using AWS PrivateLink. It addresses a key architectural constraint: **_Confluent PrivateLink attachments share a non-unique DNS namespace, while AWS Route 53 prevents associating multiple Private Hosted Zones (PHZs) with the same domain name across overlapping VPC associations. As a result, separate PHZs cannot be created per cluster and distributed across interconnected VPCs_**.
 
 To resolve this, **the repo implements a centralized PHZ shared across all participating VPCs**, using wildcard and zonal CNAME records to route traffic to the appropriate interface endpoints. This ensures deterministic DNS resolution and enables scalable multi-cluster connectivity across the network fabric.
 
@@ -187,6 +16,8 @@ Additional capabilities include Schema Registry with Stream Governance Essential
 Below is the Terraform resource visualization of the infrastructure that's created:
 
 ![terraform-visualization](docs/images/terraform-visualization.png)
+
+---
 
 **Table of Contents**
 <!-- toc -->
@@ -231,6 +62,8 @@ Below is the Terraform resource visualization of the infrastructure that's creat
     - [**4.1 Terminology**](#41-terminology)
     - [**4.2 Related Documentation**](#42-related-documentation)
 <!-- tocstop -->
+
+---
 
 ## **1.0 Prerequisites**
 This project assumes you have the following prerequisites in place:
@@ -547,6 +380,110 @@ flowchart TB
 - **Traffic flow**: TFC Agent → TGW → Workload VPC → PrivateLink Endpoint → Confluent Cloud Kafka
 
 ## **2.0 Project's Architecture Overview**
+This repo creates a multi-VPC architecture where Confluent Cloud Enterprise Kafka clusters are reachable exclusively over private network path that never traverses the public internet.
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#172554', 'primaryTextColor': '#fff', 'primaryBorderColor': '#1e40af', 'lineColor': '#6366f1', 'secondaryColor': '#f0f9ff', 'tertiaryColor': '#e0f2fe', 'noteBkgColor': '#fef3c7', 'noteTextColor': '#78350f', 'fontSize': '14px'}}}%%
+
+graph TB
+    subgraph CC["☁️ Confluent Cloud"]
+        ENV["<b>non-prod Environment</b><br/>Stream Governance: Essentials"]
+        PLATT["<b>PrivateLink Attachment</b><br/>AWS VPC Endpoint Service"]
+        SANDBOX_CL["<b>sandbox_cluster</b><br/>Enterprise · HIGH Availability"]
+        SHARED_CL["<b>shared_cluster</b><br/>Enterprise · HIGH Availability"]
+        ENV --> SANDBOX_CL
+        ENV --> SHARED_CL
+        ENV --> PLATT
+    end
+
+    subgraph AWS["☁️ AWS Region"]
+
+        subgraph TGW_BOX["🔀 Transit Gateway"]
+            TGW["<b>Transit Gateway</b><br/>Central routing hub"]
+            TGW_RT["<b>TGW Route Table</b><br/>Propagated routes"]
+        end
+
+        subgraph SANDBOX_VPC["🔒 Sandbox VPC · 10.0.0.0/20"]
+            S_SUB1["Private Subnet AZ-1"]
+            S_SUB2["Private Subnet AZ-2"]
+            S_SUB3["Private Subnet AZ-3"]
+            S_VPCE["<b>VPC Endpoint</b><br/>Interface type"]
+            S_SG["<b>Security Group</b><br/>Ports: 443, 9092, 53"]
+            S_SUB1 & S_SUB2 & S_SUB3 --> S_VPCE
+            S_VPCE --> S_SG
+        end
+
+        subgraph SHARED_VPC["🔒 Shared VPC · 10.1.0.0/20"]
+            SH_SUB1["Private Subnet AZ-1"]
+            SH_SUB2["Private Subnet AZ-2"]
+            SH_SUB3["Private Subnet AZ-3"]
+            SH_VPCE["<b>VPC Endpoint</b><br/>Interface type"]
+            SH_SG["<b>Security Group</b><br/>Ports: 443, 9092, 53"]
+            SH_SUB1 & SH_SUB2 & SH_SUB3 --> SH_VPCE
+            SH_VPCE --> SH_SG
+        end
+
+        subgraph DNS_LAYER["📡 Centralized DNS"]
+            PHZ["<b>Route 53 Private Hosted Zone</b><br/>Confluent PrivateLink domain"]
+            ZONAL["Zonal CNAME Records<br/>*.az-id.domain"]
+            WILDCARD["Wildcard CNAME Record<br/>*.domain"]
+            SYSTEM_RULE["<b>SYSTEM Resolver Rule</b><br/>Override FORWARD rules"]
+            PHZ --> ZONAL & WILDCARD
+            PHZ --> SYSTEM_RULE
+        end
+
+        subgraph INFRA_VPCS["🏗️ Infrastructure VPCs"]
+            TFC_VPC["<b>TFC Agent VPC</b><br/>Terraform Cloud Agents"]
+            DNS_VPC["<b>DNS VPC</b><br/>Centralized DNS"]
+            VPN_VPC["<b>VPN VPC</b><br/>Client VPN Endpoint"]
+        end
+
+    end
+
+    subgraph USER["👤 User Access"]
+        VPN_CLIENT["<b>VPN Client</b><br/>Developer workstation"]
+    end
+
+    subgraph TFC["⚙️ Terraform Cloud"]
+        TFC_WORKSPACE["<b>Workspace</b><br/>Agent execution mode"]
+        AGENT_POOL["<b>Agent Pool</b><br/>signalroom-iac-tfc-agents-pool"]
+        TFC_WORKSPACE --> AGENT_POOL
+    end
+
+    S_VPCE -.->|"AWS PrivateLink"| PLATT
+    SH_VPCE -.->|"AWS PrivateLink"| PLATT
+
+    SANDBOX_VPC <-->|"TGW Attachment"| TGW
+    SHARED_VPC <-->|"TGW Attachment"| TGW
+    TFC_VPC <-->|"TGW Attachment"| TGW
+    DNS_VPC <-->|"TGW Attachment"| TGW
+    VPN_VPC <-->|"TGW Attachment"| TGW
+
+    SYSTEM_RULE -.->|"PHZ Association"| TFC_VPC
+    SYSTEM_RULE -.->|"PHZ Association"| DNS_VPC
+    SYSTEM_RULE -.->|"PHZ Association"| VPN_VPC
+    SYSTEM_RULE -.->|"PHZ Association"| SANDBOX_VPC
+    SYSTEM_RULE -.->|"PHZ Association"| SHARED_VPC
+
+    VPN_CLIENT -->|"Client VPN"| VPN_VPC
+    AGENT_POOL -->|"Agent runs in"| TFC_VPC
+
+    classDef confluent fill:#172554,stroke:#1e40af,color:#fff,stroke-width:2px
+    classDef vpc fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px
+    classDef tgw fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px
+    classDef dns fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,stroke-width:2px
+    classDef infra fill:#f0f9ff,stroke:#0284c7,color:#0c4a6e,stroke-width:2px
+    classDef user fill:#fce7f3,stroke:#db2777,color:#831843,stroke-width:2px
+    classDef tfc fill:#f5f5f4,stroke:#78716c,color:#292524,stroke-width:2px
+
+    class ENV,PLATT,SANDBOX_CL,SHARED_CL confluent
+    class S_SUB1,S_SUB2,S_SUB3,S_VPCE,S_SG,SH_SUB1,SH_SUB2,SH_SUB3,SH_VPCE,SH_SG vpc
+    class TGW,TGW_RT tgw
+    class PHZ,ZONAL,WILDCARD,SYSTEM_RULE dns
+    class TFC_VPC,DNS_VPC,VPN_VPC infra
+    class VPN_CLIENT user
+    class TFC_WORKSPACE,AGENT_POOL tfc
+```
 
 ### **2.1 Key Features Required for Confluent PrivateLink to Work (Confluent Cloud Configuration)**
 
