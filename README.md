@@ -525,7 +525,7 @@ The deploy.sh script handles authentication and Terraform execution:
                    --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs>
 ```
 
-Here's the argument table for `deploy.sh`:
+Here's the argument table for `deploy.sh create` command:
 
 | Argument | Required | Description |
 |----------|----------|-------------|
@@ -563,6 +563,8 @@ All 15 arguments are required — the script exits with code `85` if any are mis
                     --vpn-endpoint-id=<VPN_ENDPOINT_ID> \
                     --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs>
 ```
+
+Here's the argument table for `deploy.sh destroy` command:
 
 | Argument | Required | Description |
 |---|---|---|
