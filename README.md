@@ -3,15 +3,9 @@ This Terraform configuration demonstrates how to build a fully private, producti
 
 To resolve this, **the repo implements a centralized PHZ shared across all participating VPCs**, using wildcard and zonal CNAME records to route traffic to the appropriate interface endpoints. This ensures deterministic DNS resolution and enables scalable multi-cluster connectivity across the network fabric.
 
-The configuration provisions a non-production Confluent Cloud environment with two Enterprise-tier, highly available Kafka clusters:
-
-- a sandbox cluster that ingests simulated stock trade events via a DataGen source connector
-
-- a shared cluster that receives those events through bidirectional Cluster Linking with automatic mirror topic synchronization
+The configuration provisions a non-production Confluent Cloud environment with two Enterprise-tier, highly available Kafka clusters.
 
 On the AWS side, the deployment creates two dedicated multi-AZ VPCs with private subnets, each connected to Confluent Cloud through PrivateLink interface endpoints so all Kafka traffic remains off the public internet. A Transit Gateway hub integrates these VPCs with existing VPN and DNS infrastructure, while Route 53 Resolver rules ensure seamless name resolution across all spoke networks.
-
-Additional capabilities include Schema Registry with Stream Governance Essentials, automated API key rotation with credentials stored in AWS Secrets Manager, and agent-based execution via Terraform Cloud. The result is a complete, reproducible reference architecture for securely operating multiple Confluent Cloud clusters over PrivateLink at scale on AWS.
 
 Below is the Terraform resource visualization of the infrastructure that's created:
 
@@ -41,23 +35,16 @@ Below is the Terraform resource visualization of the infrastructure that's creat
             - [**1.2.1.6 IAM Permissions for Infrastructure Management**](#1216-iam-permissions-for-infrastructure-management)
             - [**1.2.1.7 Network Architecture Summary**](#1217-network-architecture-summary)
 + [**2.0 Project's Architecture Overview**](#20-projects-architecture-overview)
-    + [**2.1 Key Architecture Components**](#21-key-architecture-components)
-        + [**2.1.1 Confluent Private Link Attachment (Environment-Level)**](#211-confluent-private-link-attachment-environment-level)
-        + [**2.1.2 AWS VPC Endpoint Configuration**](#212-aws-vpc-endpoint-configuration)
-        + [**2.1.3 Confluent Private Link Attachment Connection**](#213-confluent-private-link-attachment-connection)
-        + [**2.1.4 Centralized Private Hosted Zone (PHZ) Strategy**](#214-centralized-private-hosted-zone-phz-strategy)
-        + [**2.1.5 Route53 SYSTEM Resolver Rule**](#215-route53-system-resolver-rule)
-        + [**2.1.6 Transit Gateway Routing**](#216-transit-gateway-routing)
-        + [**2.1.7 Multi-Cluster Architecture with Cluster Linking**](#217-multi-cluster-architecture-with-cluster-linking)
-        + [**2.1.8 Service Account & API Key Management**](#218-service-account--api-key-management)
-        + [**2.1.9 DNS Propagation Timing**](#219-dns-propagation-timing)
-        + [**2.1.10 Schema Registry Integration**](#2110-schema-registry-integration)
+    + [**2.1 Why This Architecture?**](#21-why-this-architecture)
+        + [**2.1.1 The Problem: PrivateLink Is VPC-Scoped, But Your Organization Isn't**](#211-the-problem-privatelink-is-vpc-scoped-but-your-organization-isnt)
+        + [**2.1.2 The Solution: Centralized DNS with a Single PHZ and Smart CNAMEs**](#212-the-solution-centralized-dns-with-a-single-phz-and-smart-cnames)
+        + [**2.1.3 The Critical Piece Most Architectures Miss: The SYSTEM Resolver Rule**](#213-the-critical-piece-most-architectures-miss-the-system-resolver-rule)
+        + [**2.1.4 Why Not VPC Peering?**](#214-why-not-vpc-peering)
+        + [**2.1.5 Why Separate VPCs Per Cluster Instead of One Big VPC?**](#215-why-separate-vpcs-per-cluster-instead-of-one-big-vpc)
+        + [**2.1.6 The Terraform Cloud Agent Piece**](#216-the-terraform-cloud-agent-piece)
 + [**3.0 Let's Get Started**](#30-lets-get-started)
     - [**3.1 Deploy the Infrastructure**](#31-deploy-the-infrastructure)
-        + [**3.1.1 Handling DNS Resolution Errors**](#311-handling-dns-resolution-errors)
-        + [**3.1.2 Cluster Linking Error**](#312-cluster-linking-error)
     - [**3.2 Teardown the Infrastructure**](#32-teardown-the-infrastructure)
-        + [**3.2.1 Handling Cluster Link Deletion Error(s)**](#321-handling-cluster-link-deletion-errors)
 + [**4.0 References**](#40-references)
     - [**4.1 Terminology**](#41-terminology)
     - [**4.2 Related Documentation**](#42-related-documentation)
@@ -485,53 +472,36 @@ graph TB
     class TFC_WORKSPACE,AGENT_POOL tfc
 ```
 
-### **2.1 Key Features Required for Confluent PrivateLink to Work (Confluent Cloud Configuration)**
+### **2.1 Why This Architecture?**
+Confluent Cloud PrivateLink connectivity introduces three interconnected challenges that most naive implementations fail to solve. This architecture addresses all three systematically.
 
-#### **2.1.1 Confluent Private Link Attachment (Environment-Level)**
-- Single `confluent_private_link_attachment` resource created at the environment level for AWS region
-- Provides the `vpc_endpoint_service_name` that AWS VPC Endpoints connect to
-- Provides the `dns_domain` (e.g., `*.aws.private.confluent.cloud`) for DNS configuration
-- Multiple VPCs can share the same PrivateLink attachment via separate VPC Endpoints
+#### **2.1.1 The Problem: PrivateLink Is VPC-Scoped, But Your Organization Isn't**
+AWS PrivateLink creates an interface VPC endpoint inside a single VPC. The endpoint gets private IP addresses within that VPC's CIDR range, and DNS resolution to the Confluent cluster's bootstrap and broker endpoints must resolve to those private IPs. This creates an immediate problem: what about all the other VPCs in your AWS environment that also need to reach Confluent?
 
-#### **2.1.2 AWS VPC Endpoint Configuration**
-- Interface VPC Endpoints (`vpc_endpoint_type = "Interface"`) in each workload VPC
-- **Critical**: `private_dns_enabled = false` — DNS handled via centralized Private Hosted Zones instead
-- Security groups allowing inbound on ports 443 (HTTPS), 9092 (Kafka), and 53 (DNS) from TFC Agent VPC, VPN VPC, VPN Client CIDR, and local VPC CIDR
-- Endpoints deployed across multiple AZs (3 subnets) for high availability
+In a typical enterprise setup you have infrastructure VPCs (for CI/CD agents, DNS, VPN gateways) that all need to reach the same Kafka clusters. Without a deliberate cross-VPC strategy, you'd need to duplicate PrivateLink endpoints and DNS configuration in every single VPC — an operational and cost nightmare that doesn't scale.
 
-#### **2.1.3 Confluent Private Link Attachment Connection**
-- `confluent_private_link_attachment_connection` links the AWS VPC Endpoint ID to the Confluent PrivateLink attachment
-- Creates the bidirectional connection between AWS and Confluent Cloud
-- Depends on Route53 zone associations being complete first (`time_sleep` for propagation)
+#### **2.1.2 The Solution: Centralized Transit Gateway as the Network Backbone**
+This architecture uses AWS Transit Gateway as a centralized routing hub that connects all VPCs. Each PrivateLink VPC (Sandbox and Shared) attaches to the Transit Gateway, and bidirectional routes are established between the PrivateLink VPCs and every infrastructure VPC that needs access (TFC Agent VPC, DNS VPC, VPN VPC). This means any workload in any attached VPC can route traffic to the PrivateLink endpoint's private IPs through the Transit Gateway, without needing its own endpoint.
 
-#### **2.1.4 Centralized Private Hosted Zone (PHZ) Strategy**
-- Single PHZ created for the Confluent DNS domain, associated with **all VPCs** that need access
-- **Zonal CNAME records**: `*.{availability-zone-id}.{dns_domain}` → AZ-specific VPC Endpoint DNS
-- **Wildcard CNAME record**: `*.{dns_domain}` → Primary VPC Endpoint DNS
+The key insight is that the VPC endpoint only needs to exist in one place per cluster, but the routes to reach it can be propagated across the entire Transit Gateway topology. This is what makes the architecture scale: adding a new VPC that needs Confluent access is just a Transit Gateway attachment and a few route entries, not a full PrivateLink setup.
 
-#### **2.1.5 Route53 SYSTEM Resolver Rule**
-- `rule_type = "SYSTEM"` tells Route53 to use Private Hosted Zones for the Confluent domain
-- Rule associated with every VPC that needs Confluent access
+#### **2.1.3 The DNS Challenge: Why This Is Harder Than It Looks**
+This is where most Confluent PrivateLink implementations get tricky. Confluent's Kafka clusters use DNS-based routing extensively — the bootstrap server resolves to a hostname, which returns broker-specific hostnames, which must resolve to availability-zone-specific endpoints for proper data locality. All of this DNS resolution must return the private IP addresses of the VPC endpoint, not the public Confluent IPs.
 
-#### **2.1.6 Transit Gateway Routing**
-- Each PrivateLink VPC attached to TGW with DNS support enabled
-- Route table association AND route propagation configured
-- Routes added from PrivateLink VPCs back to all consumer VPCs
+This architecture solves the DNS challenge with three layers:
 
-#### **2.1.7 Multi-Cluster Architecture with Cluster Linking**
-- Two Enterprise Kafka clusters (Sandbox and Shared) in the same environment
-- Bidirectional Cluster Link with mirror topics for data replication
+1. **Centralized Private Hosted Zone (PHZ)**: A single Route 53 PHZ is created for the Confluent PrivateLink DNS domain and associated with all VPCs that need resolution. This eliminates PHZ duplication and ensures consistent DNS answers everywhere.
+2. **Zonal and Wildcard CNAME Records**: The PHZ contains availability-zone-specific CNAME records (e.g., `*.use1-az1.domain → vpce-xxx-use1-az1.vpce-svc.amazonaws.com`) that ensure Kafka clients connect to brokers in their local AZ, preserving data locality and minimizing cross-AZ data transfer costs. A wildcard record handles the bootstrap endpoint.
+3. **SYSTEM Resolver Rule**: This is the critical piece most architectures miss. In complex AWS environments, Route 53 Resolver may have FORWARD rules that send DNS queries to on-premises or external DNS servers. These FORWARD rules can intercept Confluent domain queries before the PHZ is consulted, breaking PrivateLink resolution entirely. The SYSTEM resolver rule explicitly tells Route 53 Resolver: "For this specific Confluent domain, resolve locally using the PHZ — do not forward anywhere." This rule is associated with every VPC in the architecture, providing a safety net against DNS forwarding conflicts.
 
-#### **2.1.8 Service Account & API Key Management**
-- Separate service accounts per role with API key rotation
-- ACLs granting specific permissions per service account
-- API keys stored in AWS Secrets Manager
+#### **2.1.4 Why Not VPC Peering?**
+VPC Peering is a valid alternative to Transit Gateway for simple topologies, but it doesn't scale well for this use case. Peering is non-transitive (if VPC-A peers with VPC-B, and VPC-B peers with VPC-C, VPC-A cannot reach VPC-C through VPC-B). With five VPCs that all need to reach two PrivateLink VPCs, you'd need a mesh of peering connections that becomes unwieldy. Transit Gateway provides transitive routing through a single hub, keeping the topology clean and the route table management centralized.
 
-#### **2.1.9 DNS Propagation Timing**
-- `time_sleep` resources ensuring DNS propagates before dependent resources (1-2 minutes)
+#### **2.1.5 Why Separate VPCs Per Cluster Instead of One Big VPC?**
+Each Kafka cluster gets its own VPC and PrivateLink endpoint through the reusable `aws-vpc-confluent-privatelink` module. This provides network-level isolation between environments (sandbox vs. shared), independent CIDR management, independent security group policies per cluster, and the ability to tear down one cluster's networking without affecting others. The module pattern also means adding a third, fourth, or fifth cluster follows the exact same playbook.
 
-#### **2.1.10 Schema Registry Integration**
-- Stream Governance (Essentials) enabled at environment level with AVRO support
+#### **2.1.6 The Terraform Cloud Agent Piece**
+The architecture runs Terraform Cloud in agent execution mode, where TFC Agents run inside a private VPC within AWS. This is essential because the Terraform provider must be able to reach the Confluent PrivateLink endpoints to validate connections and manage resources. If Terraform ran in the default remote execution mode (on HashiCorp's infrastructure), it wouldn't have network access to the private endpoints. By running agents in a VPC that's attached to the Transit Gateway and associated with the centralized PHZ, Terraform can resolve and reach the PrivateLink endpoints during plan and apply operations.
 
 ## **3.0 Let's Get Started**
 
@@ -539,57 +509,79 @@ graph TB
 The deploy.sh script handles authentication and Terraform execution: 
 
 ```bash
-./deploy.sh create \
-  --profile=<SSO_PROFILE_NAME> \
-  --confluent-api-key=<CONFLUENT_API_KEY> \
-  --confluent-api-secret=<CONFLUENT_API_SECRET> \
-  --tfe-token=<TFE_TOKEN> \
-  --tgw-id=<TGW_ID> \
-  --tgw-rt-id=<TGW_RT_ID> \
-  --tfc-agent-vpc-id=<TFC_AGENT_VPC_ID> \
-  --dns-vpc-id=<DNS_VPC_ID> \
-  --vpn-vpc-id=<VPN_VPC_ID> \
+./deploy.sh create --profile=<SSO_PROFILE_NAME> \
+                   --confluent-api-key=<CONFLUENT_API_KEY> \
+                   --confluent-api-secret=<CONFLUENT_API_SECRET> \
+                   --tfe-token=<TFE_TOKEN> \
+                   --tgw-id=<TGW_ID> \
+                   --tgw-rt-id=<TGW_RT_ID> \
+                   --tfc-agent-vpc-id=<TFC_AGENT_VPC_ID> \
+                   --tfc-agent-vpc-rt-ids=<TFC_AGENT_VPC_RT_IDs> \
+                   --dns-vpc-id=<DNS_VPC_ID> \
+                   --dns-vpc-rt-ids=<DNS_VPC_RT_IDs> \
+                   --vpn-vpc-id=<VPN_VPC_ID> \
+                   --vpn-vpc-rt-ids=<VPN_VPC_RT_IDs> \
+                   --vpn-endpoint-id=<VPN_ENDPOINT_ID> \
+                   --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs>
 ```
 
-| Argument | Required | Default | Description |
-|---|---|---|---|
-| `create` | ✅ | — | The command to execute. `create` deploys the infrastructure via `terraform apply`.|
-| `--profile` | ✅ | — | The AWS SSO profile name. Passed directly to `aws sso login` and `aws2-wrap` for authentication, and used to resolve `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN`, which are then exported as `TF_VAR_aws_region`, `TF_VAR_aws_access_key_id`, `TF_VAR_aws_secret_access_key`, and `TF_VAR_aws_session_token` for Terraform, respectively. |
-| `--confluent-api-key` | ✅ | — | Confluent Cloud API key. Exported as `TF_VAR_confluent_api_key` for Terraform. |
-| `--confluent-api-secret` | ✅ | — | Confluent Cloud API secret. Exported as `TF_VAR_confluent_api_secret` for Terraform. |
-| `--tfe-token` | ✅ | — | Terraform Enterprise/Cloud API token. Exported as `TF_VAR_tfe_token` — used for authenticating the TFC Agent or remote backend. |
-| `--tgw-id` | ✅ | — | AWS Transit Gateway ID. Exported as `TF_VAR_tgw_id` for routing between VPCs. |
-| `--tgw-rt-id` | ✅ | — | AWS Transit Gateway Route Table ID. Exported as `TF_VAR_tgw_rt_id` for associating route entries. |
-| `--tfc-agent-vpc-id` | ✅ | — | VPC ID where the Terraform Cloud Agent resides. Exported as `TF_VAR_tfc_agent_vpc_id`. |
-| `--dns-vpc-id` | ✅ | — | VPC ID hosting the DNS infrastructure (Route 53 Resolver endpoints). Exported as `TF_VAR_dns_vpc_id`. |
-| `--vpn-vpc-id` | ✅ | — | VPC ID where the AWS Client VPN endpoint is deployed. Exported as `TF_VAR_vpn_vpc_id`. |
+Here's the argument table for `deploy.sh`:
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `create` | ✅ | The command to execute. `create` deploys the infrastructure via `terraform apply`.|
+| `--profile` | ✅ | The AWS SSO profile name. Passed directly to `aws sso login` and `aws2-wrap` for authentication, and used to resolve `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN`, which are then exported as `TF_VAR_aws_region`, `TF_VAR_aws_access_key_id`, `TF_VAR_aws_secret_access_key`, and `TF_VAR_aws_session_token` for Terraform, respectively. |
+| `--confluent-api-key` | ✅ | Confluent Cloud API key. Exported as `TF_VAR_confluent_api_key` for Terraform. |
+| `--confluent-api-secret` | ✅ | Confluent Cloud API secret. Exported as `TF_VAR_confluent_api_secret` for Terraform. |
+| `--tfe-token` | ✅ | Terraform Enterprise/Cloud API token. Exported as `TF_VAR_tfe_token` — used for authenticating the TFC Agent or remote backend. |
+| `--tgw-id` | ✅ | AWS Transit Gateway ID. Exported as `TF_VAR_tgw_id` for routing between VPCs. |
+| `--tgw-rt-id` | ✅ | AWS Transit Gateway Route Table ID. Exported as `TF_VAR_tgw_rt_id` for associating route entries. |
+| `--tfc-agent-vpc-id` | ✅ | VPC ID where the Terraform Cloud Agent resides. Exported as `TF_VAR_tfc_agent_vpc_id`. |
+| `--tfc-agent-vpc-rt-ids` | ✅ | Route table IDs for the TFC Agent VPC (supports multiple, unquoted). |
+| `--dns-vpc-id` | ✅ | VPC ID for the DNS resolver infrastructure. Exported as `TF_VAR_dns_vpc_id`. |
+| `--dns-vpc-rt-ids` | ✅ | Route table IDs for the DNS VPC (supports multiple, unquoted). Exported as `TF_VAR_dns_vpc_rt_ids`. |
+| `--vpn-vpc-id` | ✅ | VPC ID for the VPN infrastructure. Exported as `TF_VAR_vpn_vpc_id`. |
+| `--vpn-vpc-rt-ids` | ✅ | Route table IDs for the VPN VPC (supports multiple, unquoted). Exported as `TF_VAR_vpn_vpc_rt_ids`. |
+| `--vpn-endpoint-id` | ✅ | AWS Client VPN endpoint ID. Exported as `TF_VAR_vpn_endpoint_id`. |
+| `--vpn-target-subnet-ids` | ✅ | Subnet IDs associated with the VPN endpoint target network. Exported as `TF_VAR_vpn_target_subnet_ids`. |
+
+All 15 arguments are required — the script exits with code `85` if any are missing.
 
 ### **3.2 Teardown the Infrastructure**
 ```bash
-./deploy.sh destroy \
-  --profile=<SSO_PROFILE_NAME> \
-  --confluent-api-key=<CONFLUENT_API_KEY> \
-  --confluent-api-secret=<CONFLUENT_API_SECRET> \
-  --tfe-token=<TFE_TOKEN> \
-  --tgw-id=<TGW_ID> \
-  --tgw-rt-id=<TGW_RT_ID> \
-  --tfc-agent-vpc-id=<TFC_AGENT_VPC_ID> \
-  --dns-vpc-id=<DNS_VPC_ID> \
-  --vpn-vpc-id=<VPN_VPC_ID> \
+./deploy.sh destroy --profile=<SSO_PROFILE_NAME> \
+                    --confluent-api-key=<CONFLUENT_API_KEY> \
+                    --confluent-api-secret=<CONFLUENT_API_SECRET> \
+                    --tfe-token=<TFE_TOKEN> \
+                    --tgw-id=<TGW_ID> \
+                    --tgw-rt-id=<TGW_RT_ID> \
+                    --tfc-agent-vpc-id=<TFC_AGENT_VPC_ID> \
+                    --tfc-agent-vpc-rt-ids=<TFC_AGENT_VPC_RT_IDs> \
+                    --dns-vpc-id=<DNS_VPC_ID> \
+                    --dns-vpc-rt-ids=<DNS_VPC_RT_IDs> \
+                    --vpn-vpc-id=<VPN_VPC_ID> \
+                    --vpn-vpc-rt-ids=<VPN_VPC_RT_IDs> \
+                    --vpn-endpoint-id=<VPN_ENDPOINT_ID> \
+                    --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs>
 ```
 
-| Argument | Required | Default | Description |
-|---|---|---|---|
-| `destroy` | ✅ | — | The command to execute. `destroy` tears it down via `terraform destroy` and force-deletes associated AWS Secrets Manager secrets. |
-| `--profile` | ✅ | — | The AWS SSO profile name. Passed directly to `aws sso login` and `aws2-wrap` for authentication, and used to resolve `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN`, which are then exported as `TF_VAR_aws_region`, `TF_VAR_aws_access_key_id`, `TF_VAR_aws_secret_access_key`, and `TF_VAR_aws_session_token` for Terraform, respectively. |
-| `--confluent-api-key` | ✅ | — | Confluent Cloud API key. Exported as `TF_VAR_confluent_api_key` for Terraform. |
-| `--confluent-api-secret` | ✅ | — | Confluent Cloud API secret. Exported as `TF_VAR_confluent_api_secret` for Terraform. |
-| `--tfe-token` | ✅ | — | Terraform Enterprise/Cloud API token. Exported as `TF_VAR_tfe_token` — used for authenticating the TFC Agent or remote backend. |
-| `--tgw-id` | ✅ | — | AWS Transit Gateway ID. Exported as `TF_VAR_tgw_id` for routing between VPCs. |
-| `--tgw-rt-id` | ✅ | — | AWS Transit Gateway Route Table ID. Exported as `TF_VAR_tgw_rt_id` for associating route entries. |
-| `--tfc-agent-vpc-id` | ✅ | — | VPC ID where the Terraform Cloud Agent resides. Exported as `TF_VAR_tfc_agent_vpc_id`. |
-| `--dns-vpc-id` | ✅ | — | VPC ID hosting the DNS infrastructure (Route 53 Resolver endpoints). Exported as `TF_VAR_dns_vpc_id`. |
-| `--vpn-vpc-id` | ✅ | — | VPC ID where the AWS Client VPN endpoint is deployed. Exported as `TF_VAR_vpn_vpc_id`. |
+| Argument | Required | Description |
+|---|---|---|
+| `destroy` | ✅ | The command to execute. `destroy` tears it down via `terraform destroy` and force-deletes associated AWS Secrets Manager secrets. |
+| `--profile` | ✅ | The AWS SSO profile name. Passed directly to `aws sso login` and `aws2-wrap` for authentication, and used to resolve `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN`, which are then exported as `TF_VAR_aws_region`, `TF_VAR_aws_access_key_id`, `TF_VAR_aws_secret_access_key`, and `TF_VAR_aws_session_token` for Terraform, respectively. |
+| `--confluent-api-key` | ✅ | Confluent Cloud API key. Exported as `TF_VAR_confluent_api_key` for Terraform. |
+| `--confluent-api-secret` | ✅ | Confluent Cloud API secret. Exported as `TF_VAR_confluent_api_secret` for Terraform. |
+| `--tfe-token` | ✅ | Terraform Enterprise/Cloud API token. Exported as `TF_VAR_tfe_token` — used for authenticating the TFC Agent or remote backend. |
+| `--tgw-id` | ✅ | AWS Transit Gateway ID. Exported as `TF_VAR_tgw_id` for routing between VPCs. |
+| `--tgw-rt-id` | ✅ | AWS Transit Gateway Route Table ID. Exported as `TF_VAR_tgw_rt_id` for associating route entries. |
+| `--tfc-agent-vpc-id` | ✅ | VPC ID where the Terraform Cloud Agent resides. Exported as `TF_VAR_tfc_agent_vpc_id`. |
+| `--tfc-agent-vpc-rt-ids` | ✅ | Route table IDs for the TFC Agent VPC (supports multiple, unquoted). |
+| `--dns-vpc-id` | ✅ | VPC ID for the DNS resolver infrastructure. Exported as `TF_VAR_dns_vpc_id`. |
+| `--dns-vpc-rt-ids` | ✅ | Route table IDs for the DNS VPC (supports multiple, unquoted). Exported as `TF_VAR_dns_vpc_rt_ids`. |
+| `--vpn-vpc-id` | ✅ | VPC ID for the VPN infrastructure. Exported as `TF_VAR_vpn_vpc_id`. |
+| `--vpn-vpc-rt-ids` | ✅ | Route table IDs for the VPN VPC (supports multiple, unquoted). Exported as `TF_VAR_vpn_vpc_rt_ids`. |
+| `--vpn-endpoint-id` | ✅ | AWS Client VPN endpoint ID. Exported as `TF_VAR_vpn_endpoint_id`. |
+| `--vpn-target-subnet-ids` | ✅ | Subnet IDs associated with the VPN endpoint target network. Exported as `TF_VAR_vpn_target_subnet_ids`. |
 
 ## **4.0 Resources**
 
