@@ -544,7 +544,7 @@ Here's the argument table for `deploy.sh create` command:
 | `--vpn-endpoint-id` | ✅ | AWS Client VPN endpoint ID. Exported as `TF_VAR_vpn_endpoint_id`. |
 | `--vpn-target-subnet-ids` | ✅ | Subnet IDs associated with the VPN endpoint target network. Exported as `TF_VAR_vpn_target_subnet_ids`. |
 
-All 15 arguments are required — the script exits with code `85` if any are missing.
+> All 14 arguments are required — the script exits with code `85` if any are missing.
 
 ### **3.2 Teardown the Infrastructure**
 ```bash
@@ -582,6 +582,8 @@ Here's the argument table for `deploy.sh destroy` command:
 | `--vpn-vpc-rt-ids` | ✅ | Route table IDs for the VPN VPC (supports multiple, unquoted). Exported as `TF_VAR_vpn_vpc_rt_ids`. |
 | `--vpn-endpoint-id` | ✅ | AWS Client VPN endpoint ID. Exported as `TF_VAR_vpn_endpoint_id`. |
 | `--vpn-target-subnet-ids` | ✅ | Subnet IDs associated with the VPN endpoint target network. Exported as `TF_VAR_vpn_target_subnet_ids`. |
+
+> All 14 arguments are required — the script exits with code `85` if any are missing.
 
 ## **4.0 Resources**
 
