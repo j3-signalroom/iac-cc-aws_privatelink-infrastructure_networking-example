@@ -437,24 +437,31 @@ graph TB
         TFC_WORKSPACE --> AGENT_POOL
     end
 
+    %% PrivateLink connections
     S_VPCE -.->|"AWS PrivateLink"| PLATT
     SH_VPCE -.->|"AWS PrivateLink"| PLATT
 
+    %% Transit Gateway connections
     SANDBOX_VPC <-->|"TGW Attachment"| TGW
     SHARED_VPC <-->|"TGW Attachment"| TGW
     TFC_VPC <-->|"TGW Attachment"| TGW
     DNS_VPC <-->|"TGW Attachment"| TGW
     VPN_VPC <-->|"TGW Attachment"| TGW
 
+    %% DNS associations
     SYSTEM_RULE -.->|"PHZ Association"| TFC_VPC
     SYSTEM_RULE -.->|"PHZ Association"| DNS_VPC
     SYSTEM_RULE -.->|"PHZ Association"| VPN_VPC
     SYSTEM_RULE -.->|"PHZ Association"| SANDBOX_VPC
     SYSTEM_RULE -.->|"PHZ Association"| SHARED_VPC
 
+    %% User access
     VPN_CLIENT -->|"Client VPN"| VPN_VPC
+
+    %% TFC Agent connection
     AGENT_POOL -->|"Agent runs in"| TFC_VPC
 
+    %% Styling
     classDef confluent fill:#172554,stroke:#1e40af,color:#fff,stroke-width:2px
     classDef vpc fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px
     classDef tgw fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px
