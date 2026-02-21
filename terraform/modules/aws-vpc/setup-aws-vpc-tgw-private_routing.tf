@@ -8,6 +8,26 @@ resource "aws_vpc" "privatelink" {
   }
 }
 
+# Create VPC Endpoint
+resource "aws_vpc_endpoint" "privatelink" {
+  vpc_id              = aws_vpc.privatelink.id
+  service_name        = var.privatelink_service_name
+  vpc_endpoint_type   = "Interface"
+  security_group_ids  = [aws_security_group.privatelink.id]
+  private_dns_enabled = false
+  
+  subnet_ids = aws_subnet.private[*].id
+  
+  tags = {
+    Name        = "ccloud-privatelink-${var.vpc_name}"
+    VPC         = aws_vpc.privatelink.id
+  }
+
+  depends_on = [
+    aws_security_group.privatelink
+  ]
+}
+
 resource "aws_subnet" "private" {
   count = var.subnet_count
 
@@ -53,7 +73,6 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "privatelink" {
 
   tags = {
     Name        = "${aws_vpc.privatelink.id}-ccloud-privatelink-tgw-attachment"
-    Environment = data.confluent_environment.privatelink.display_name
     ManagedBy   = "Terraform Cloud"
     Purpose     = "Confluent PrivateLink connectivity"
   }

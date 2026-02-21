@@ -1,7 +1,7 @@
 # Create the security group
 resource "aws_security_group" "privatelink" {
-  name        = "ccloud-privatelink_${local.network_id}_${aws_vpc.privatelink.id}"
-  description = "Confluent Cloud Private Link Security Group for ${var.dns_domain}"
+  name        = "ccloud-privatelink-${var.vpc_name}_${aws_vpc.privatelink.id}"
+  description = "Confluent Cloud Private Link Security Group"
   vpc_id      = aws_vpc.privatelink.id
 
   lifecycle {
@@ -9,9 +9,8 @@ resource "aws_security_group" "privatelink" {
   }
   
   tags = {
-    Name        = "ccloud-privatelink-${local.network_id}"
+    Name        = "ccloud-privatelink-${var.vpc_name}"
     VPC         = aws_vpc.privatelink.id
-    Environment = data.confluent_environment.privatelink.display_name
   }
 }
 
