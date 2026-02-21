@@ -23,18 +23,8 @@ variable "privatelink_service_name" {
   type        = string
 }
 
-variable "dns_domain" {
-  description = "DNS domain from Confluent Private Link Attachment (e.g., us-east-1.aws.private.confluent.cloud)"
-  type        = string
-}
-
 variable "confluent_environment_id" {
   description = "Confluent Environment ID"
-  type        = string
-}
-
-variable "confluent_platt_id" {
-  description = "Confluent PrivateLink Attachment ID"
   type        = string
 }
 
@@ -61,12 +51,6 @@ variable "tfc_agent_vpc_id" {
 variable "tfc_agent_vpc_cidr" {
   description = "Terraform Cloud Agent VPC CIDR"
   type        = string
-}
-
-variable "shared_phz_id" {
-  description = "Optional: Existing Route53 Private Hosted Zone ID. If provided, the module will use this instead of creating a new one. Leave empty to create a new PHZ."
-  type        = string
-  default     = null
 }
 
 variable "dns_vpc_cidr" {

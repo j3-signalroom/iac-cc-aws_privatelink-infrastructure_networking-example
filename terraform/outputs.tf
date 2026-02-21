@@ -1,11 +1,11 @@
 output "all_sandbox_cluster_attributes" {
   description = "All attributes of the sandbox cluster"
-  value       = module.sandbox_vpc_privatelink
+  value       = module.sandbox_vpc
 }
 
 output "all_shared_cluster_attributes" {
   description = "All attributes of the shared cluster"
-  value       = module.shared_vpc_privatelink
+  value       = module.shared_vpc
 }
 
 output "tfc_agent_vpc_cidr_block" {

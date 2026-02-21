@@ -69,14 +69,9 @@ output "vpc_endpoint_dns" {
   value       = aws_vpc_endpoint.privatelink.dns_entry[0]["dns_name"]
 }
 
-output "route53_zone_id" {
-  description = "Route53 Private Hosted Zone ID (either created or existing)"
-  value       = data.aws_route53_zone.shared_phz.zone_id
-}
-
-output "route53_zone_name" {
-  description = "Route53 Private Hosted Zone name"
-  value       = var.dns_domain
+output "vpc_endpoint_dns_name" {
+  description = "The primary DNS name of the VPC Endpoint"
+  value       = aws_vpc_endpoint.privatelink.dns_entry[0].dns_name
 }
 
 output "vpc_id" {
@@ -92,14 +87,4 @@ output "security_group_id" {
 output "tgw_attachment_id" {
   description = "Transit Gateway VPC Attachment ID"
   value       = aws_ec2_transit_gateway_vpc_attachment.privatelink.id
-}
-
-output "confluent_connection_id" {
-  description = "Confluent Private Link Attachment Connection ID"
-  value       = confluent_private_link_attachment_connection.privatelink.id
-}
-
-output "dns_ready" {
-  description = "Dependency handle to ensure DNS is fully propagated"
-  value       = time_sleep.wait_for_zone_associations.id
 }
