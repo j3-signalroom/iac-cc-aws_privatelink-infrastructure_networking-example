@@ -1,16 +1,18 @@
+# The gateway is a cloud-native Kafka proxy solution designed to simplify connectivity to and from 
+# Confluent Cloud Kafka cluster services.  It provides a secure and efficient way to connect your
+# applications and services to Confluent Cloud, enabling seamless integration and communication with
+# your Kafka clusters (i.e., abstracting away complex broker lists, inconsistent security settings,
+# and the operational overhead of managing direct client-to-cluster connections).
+resource "confluent_gateway" "non_prod" {
+  display_name = "${confluent_environment.non_prod.display_name}-privatelink-gateway"
 
-resource "confluent_private_link_attachment" "non_prod" {
-  cloud        = "AWS"
-  region       = var.aws_region
-  display_name = "${confluent_environment.non_prod.display_name}-aws-platt"
-  
   environment {
     id = confluent_environment.non_prod.id
   }
 
-  depends_on = [
-    confluent_environment.non_prod
-  ]
+  aws_ingress_private_link_gateway {
+      region = var.aws_region
+   }
 }
 
 # ===================================================================================
