@@ -23,6 +23,9 @@ terraform {
     }
 }
 
+# ===================================================================================
+# CONFLUENT ENVIRONMENT AND GATEWAY CONFIGURATION
+# ===================================================================================
 resource "confluent_environment" "non_prod" {
   display_name = "non-prod"
 

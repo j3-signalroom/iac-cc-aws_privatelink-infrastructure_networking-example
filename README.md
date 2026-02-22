@@ -64,91 +64,160 @@ This project assumes you have the following prerequisites in place:
 
 ### **1.1 Client VPN, Centralized DNS Server, and Transit Gateway**
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#1a73e8', 'primaryTextColor': '#fff', 'primaryBorderColor': '#1557b0', 'lineColor': '#5f6368', 'secondaryColor': '#34a853', 'tertiaryColor': '#fbbc04'}}}%%
-
+---
+title: AWS Client VPN + Transit Gateway Integration — signalroom-iac-aws-client-vpn-tgw-integration
+---
 flowchart TB
-    subgraph USERS["👤 Remote Users"]
-        VPNClient["VPN Client<br/>(OpenVPN/AWS Client)"]
+    %% ─── External Actor ───────────────────────────────────────────────────────
+    subgraph REMOTE["🌐 Remote User"]
+        CLIENT["💻 VPN Client\n(AWS VPN Client App)\n.ovpn config"]
     end
 
-    subgraph AWS["☁️ AWS Cloud"]
-        subgraph VPN_VPC["Client VPN VPC<br/>var.vpn_vpc_cidr"]
-            VPNEndpoint["AWS Client VPN<br/>Endpoint"]
-            VPNSubnets["VPN Subnets<br/>(Multi-AZ)"]
-            VPNSG["Security Group<br/>client-vpn-sg"]
-            VPNResolver["Route53 Outbound<br/>Resolver Endpoint"]
-            VPNEndpoint --> VPNSubnets
-            VPNSubnets --> VPNSG
-            VPNSubnets --> VPNResolver
+    %% ─── Client VPN VPC ───────────────────────────────────────────────────────
+    subgraph VPNVPC["Client VPN VPC  (vpc_cidr)"]
+        direction TB
+
+        subgraph ENDPOINT["AWS Client VPN Endpoint"]
+            VPNEP["aws_ec2_client_vpn_endpoint\n─────────────────────\nclient_cidr_block (VPN pool)\nserver_certificate_arn\nauthentication_type\nsplit_tunnel\ntransport_protocol / vpn_port\ndns_servers → dns_vpc_resolver_ips"]
+            AUTHRULE["aws_ec2_client_vpn_authorization_rule\n(per target CIDR)"]
+            VPNROUTE["aws_ec2_client_vpn_route\n(per subnet × per workload CIDR)"]
+            ASSOC["aws_ec2_client_vpn_network_association\n(per subnet)"]
         end
 
-        subgraph TGW["Transit Gateway<br/>signalroom-tgw"]
-            TGWCore["TGW Core<br/>ASN: 64512"]
-            TGWRouteTable["Custom Route<br/>Tables"]
-            TGWCore --> TGWRouteTable
+        subgraph SUBNETS["Subnets (1 per AZ)"]
+            SN1["Subnet AZ-a\ncidrsubnet(vpc_cidr, bits, 0)"]
+            SN2["Subnet AZ-b\ncidrsubnet(vpc_cidr, bits, 1)"]
+            SNN["Subnet AZ-n …"]
         end
 
-        subgraph DNS_VPC["DNS VPC (Centralized)<br/>var.dns_vpc_cidr"]
-            R53Inbound["Route53 Inbound<br/>Resolver Endpoint"]
-            R53PHZ["Private Hosted Zones<br/>*.aws.confluent.cloud"]
-            R53Inbound --> R53PHZ
+        subgraph ROUTETABLES["Route Tables (per AZ)"]
+            RT1["RTB AZ-a\n→ workload CIDRs via TGW\n→ dns_vpc_cidr via TGW\n→ vpn_client_cidr via VPN ENI"]
+            RT2["RTB AZ-b"]
         end
 
-        subgraph TFC_VPC["TFC Agent VPC<br/>var.tfc_agent_vpc_cidr"]
-            TFCAgent["Terraform Cloud<br/>Agent"]
+        subgraph RESOLVER["Route53 Outbound Resolver"]
+            RESOLVERSG["aws_security_group\n(resolver-outbound-sg)\nEgress 53/TCP+UDP → dns_vpc_cidr"]
+            RESOLVEREP["aws_route53_resolver_endpoint\n(OUTBOUND, 2 subnets)"]
+            RESRULE["aws_route53_resolver_rule\n(FORWARD)\nconfluent_private_domain\n→ dns_vpc_resolver_ips"]
+            RESRULEADD["aws_route53_resolver_rule\n(FORWARD — additional_private_domains)"]
+            RESASSOC["aws_route53_resolver_rule_association\nvpn_vpc"]
         end
 
-        subgraph WORKLOAD_VPCs["Workload VPCs"]
-            subgraph WL1["Workload VPC 1"]
-                VPCE1["VPC Endpoint<br/>(PrivateLink)"]
-            end
-            subgraph WL2["Workload VPC N..."]
-                VPCEN["VPC Endpoint<br/>(PrivateLink)"]
-            end
-        end
-
-        ACM["ACM Certificates<br/>(Server & Client)"]
-        CWLogs["CloudWatch Logs<br/>VPN & Flow Logs"]
+        VPNSG["aws_security_group (client-vpn-sg)\nIngress: workload_vpc_cidrs\nEgress: 0.0.0.0/0"]
+        FLOWLOG["aws_flow_log (optional)\n+ aws_iam_role vpc_flow_logs\n+ aws_cloudwatch_log_group /aws/vpc/flow-logs"]
     end
 
-    subgraph CONFLUENT["☁️ Confluent Cloud"]
-        PrivateLinkService["PrivateLink Service<br/>Endpoint"]
-        Kafka["Kafka Cluster<br/>(Private)"]
-        PrivateLinkService --> Kafka
+    %% ─── Transit Gateway ──────────────────────────────────────────────────────
+    subgraph TGW["Transit Gateway (existing — tgw_id)"]
+        TGWATT["aws_ec2_transit_gateway_vpc_attachment\n(client_vpn VPC)"]
+        TGWRTA["aws_ec2_transit_gateway_route_table_association\n→ tgw_rt_id"]
+        TGWRTP["aws_ec2_transit_gateway_route_table_propagation\nvpc_cidr → tgw_rt_id"]
+        TGWRTS["Static Routes in tgw_rt_id\n→ vpc_cidr\n→ vpn_client_cidr"]
+        TGWRTBL["TGW Route Table (tgw_rt_id)"]
     end
 
-    %% Connections
-    VPNClient -->|"Mutual TLS<br/>Authentication"| VPNEndpoint
-    ACM -.->|"Certificate Auth"| VPNEndpoint
-    
-    VPN_VPC -->|"TGW Attachment"| TGW
-    DNS_VPC -->|"TGW Attachment"| TGW
-    TFC_VPC -->|"TGW Attachment"| TGW
-    WL1 -->|"TGW Attachment"| TGW
-    WL2 -->|"TGW Attachment"| TGW
+    %% ─── DNS VPC ──────────────────────────────────────────────────────────────
+    subgraph DNSVPC["DNS VPC (existing)"]
+        INBOUNDRES["Route53 Inbound Resolver\n(dns_vpc_resolver_ips)"]
+        PHZ["Private Hosted Zones\n(Confluent PrivateLink domains)"]
+        VPCE["VPC Endpoints\n(Confluent PrivateLink ENIs)"]
+    end
 
-    VPNResolver -->|"DNS Forwarding<br/>Rule"| R53Inbound
-    R53PHZ -->|"Returns Private<br/>Endpoint IPs"| VPCE1
+    %% ─── Workload VPCs ────────────────────────────────────────────────────────
+    subgraph WORKVPCS["Workload VPCs (existing — workload_vpc_cidrs)"]
+        WV1["Workload VPC 1\n(Kafka / Flink services)"]
+        WV2["Workload VPC 2 …"]
+    end
 
-    VPCE1 -->|"AWS PrivateLink"| PrivateLinkService
-    VPCEN -->|"AWS PrivateLink"| PrivateLinkService
+    %% ─── Confluent Cloud ──────────────────────────────────────────────────────
+    subgraph CONFLUENT["☁️ Confluent Cloud (private.confluent.cloud)"]
+        CC["Confluent Kafka / Schema Registry\n(accessed via PrivateLink)"]
+    end
 
-    VPNEndpoint -.->|"Logs"| CWLogs
-    TGW -.->|"Flow Logs"| CWLogs
+    %% ─── Observability ────────────────────────────────────────────────────────
+    subgraph OBS["CloudWatch / IAM"]
+        CWG["aws_cloudwatch_log_group (VPN connections)\naws_cloudwatch_log_stream"]
+        IAMTGW["aws_iam_role tgw_flow_logs\n(vpc-flow-logs.amazonaws.com)"]
+        IAMVPC["aws_iam_role vpc_flow_logs\n(vpc-flow-logs.amazonaws.com)"]
+    end
 
-    %% Styling
-    classDef userStyle fill:#4285f4,stroke:#1557b0,stroke-width:2px,color:#fff
-    classDef vpcStyle fill:#e8f0fe,stroke:#1a73e8,stroke-width:2px
-    classDef tgwStyle fill:#fef7e0,stroke:#f9ab00,stroke-width:3px
-    classDef dnsStyle fill:#e6f4ea,stroke:#34a853,stroke-width:2px
-    classDef confluentStyle fill:#f3e8fd,stroke:#9334e6,stroke-width:2px
-    classDef serviceStyle fill:#fff,stroke:#5f6368,stroke-width:1px
+    %% ─── Terraform Cloud ──────────────────────────────────────────────────────
+    subgraph TFC["Terraform Cloud"]
+        WS["workspace: signalroom-iac-aws-client-vpn-tgw-integration\norg: signalroom\nexecution_mode: local"]
+    end
 
-    class USERS userStyle
-    class VPN_VPC,TFC_VPC,WORKLOAD_VPCs,WL1,WL2 vpcStyle
-    class TGW tgwStyle
-    class DNS_VPC dnsStyle
-    class CONFLUENT confluentStyle
+    %% ─── Connections ──────────────────────────────────────────────────────────
+
+    %% VPN client → endpoint
+    CLIENT -- "TLS/UDP\n(transport_protocol/vpn_port)" --> VPNEP
+    VPNEP --> VPNSG
+    VPNEP --> ASSOC
+    ASSOC --> SN1
+    ASSOC --> SN2
+    VPNEP --> AUTHRULE
+    VPNEP --> VPNROUTE
+    VPNEP -- "connection logs" --> CWG
+
+    %% Subnets → Route Tables
+    SN1 --> RT1
+    SN2 --> RT2
+
+    %% Route Tables → TGW
+    RT1 -- "workload CIDRs\n+ dns_vpc_cidr" --> TGWATT
+    RT2 -- "workload CIDRs\n+ dns_vpc_cidr" --> TGWATT
+
+    %% VPN VPC → TGW attachment
+    VPNVPC --> TGWATT
+    TGWATT --> TGWRTA
+    TGWATT --> TGWRTP
+    TGWATT --> TGWRTS
+    TGWRTA --> TGWRTBL
+    TGWRTP --> TGWRTBL
+    TGWRTS --> TGWRTBL
+
+    %% TGW → downstream VPCs
+    TGWRTBL --> DNSVPC
+    TGWRTBL --> WORKVPCS
+
+    %% DNS resolution chain
+    VPNEP -- "dns_servers=dns_vpc_resolver_ips" --> RESOLVEREP
+    RESOLVEREP --> RESOLVERSG
+    RESRULE --> RESOLVEREP
+    RESRULEADD --> RESOLVEREP
+    RESASSOC --> RESRULE
+    RESOLVEREP -- "port 53 via TGW" --> INBOUNDRES
+    INBOUNDRES --> PHZ
+    PHZ -- "private IP" --> VPCE
+    VPCE <--> CC
+
+    %% Workload access
+    CLIENT -- "data plane\n(via TGW after DNS resolves)" --> WORKVPCS
+
+    %% Flow logs / IAM
+    FLOWLOG --> IAMVPC
+    IAMTGW -.-> TGW
+    CWG --> OBS
+
+    %% Terraform Cloud
+    TFC -.-> VPNVPC
+    TFC -.-> TGW
+
+    %% ─── Styles ───────────────────────────────────────────────────────────────
+    classDef aws fill:#FF9900,color:#000,stroke:#232F3E,stroke-width:1.5px
+    classDef dns fill:#7AA116,color:#fff,stroke:#232F3E,stroke-width:1.5px
+    classDef tgw fill:#E7157B,color:#fff,stroke:#232F3E,stroke-width:1.5px
+    classDef confluent fill:#0074E4,color:#fff,stroke:#003087,stroke-width:1.5px
+    classDef obs fill:#4B0082,color:#fff,stroke:#232F3E,stroke-width:1.5px
+    classDef tfc fill:#5C4EE5,color:#fff,stroke:#4040BB,stroke-width:1.5px
+    classDef client fill:#1A9C3E,color:#fff,stroke:#0E5C24,stroke-width:1.5px
+
+    class VPNEP,VPNSG,ASSOC,AUTHRULE,VPNROUTE,SN1,SN2,SNN,RT1,RT2,FLOWLOG aws
+    class RESOLVEREP,RESOLVERSG,RESRULE,RESRULEADD,RESASSOC,INBOUNDRES,PHZ,VPCE dns
+    class TGWATT,TGWRTA,TGWRTP,TGWRTS,TGWRTBL tgw
+    class CC,CONFLUENT confluent
+    class CWG,IAMTGW,IAMVPC obs
+    class WS,TFC tfc
+    class CLIENT client
 ```
 
 #### **1.1.1 Key Features Required for Confluent PrivateLink to Work**
