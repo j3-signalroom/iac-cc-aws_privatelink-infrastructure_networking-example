@@ -1,13 +1,11 @@
 # IaC Confluent Cloud AWS Private Linking, Infrastructure and Networking Example
-This Terraform configuration demonstrates how to build a fully private, production-grade connectivity architecture between AWS and Confluent Cloud using AWS PrivateLink. It addresses a key architectural constraint: **_Confluent PrivateLink attachments share a non-unique DNS namespace, while AWS Route 53 prevents associating multiple Private Hosted Zones (PHZs) with the same domain name across overlapping VPC associations. As a result, separate PHZs cannot be created per cluster and distributed across interconnected VPCs_**.
+ Officially, [Febrary 13, 2026, Confluent Cloud](https://docs.confluent.io/cloud/current/release-notes/index.html#february-13-2026) announced support for Ingress Gateway and Ingress Gateway Access Points as the support resources for private connections between AWS and Confluent Cloud.  **_These replace PrivateLink Attachment (PLATT) resources and PLATT connections going forward._**
 
-To resolve this, **the repo implements a centralized PHZ shared across all participating VPCs**, using wildcard and zonal CNAME records to route traffic to the appropriate interface endpoints. This ensures deterministic DNS resolution and enables scalable multi-cluster connectivity across the network fabric.
+ > **Note:** Support for PLATT will end in a future release.
 
-The configuration provisions a non-production Confluent Cloud environment with two Enterprise-tier, highly available Kafka clusters.
+This repo provides a comprehensive Terraform configuration example for building a fully private connectivity architecture between AWS and Confluent Cloud using AWS PrivateLink. It demonstrates how to leverage a centralized DNS architecture with Route 53 Private Hosted Zones and Transit Gateway to enable scalable, multi-VPC access to Confluent Cloud Kafka clusters over PrivateLink, without exposing any traffic to the public internet.
 
-On the AWS side, the deployment creates two dedicated multi-AZ VPCs with private subnets, each connected to Confluent Cloud through PrivateLink interface endpoints so all Kafka traffic remains off the public internet. A Transit Gateway hub integrates these VPCs with existing VPN and DNS infrastructure, while Route 53 Resolver rules ensure seamless name resolution across all spoke networks.
-
-Below is the Terraform resource visualization of the infrastructure that's created:
+Below is the Terraform resource visualization of the infrastructure:
 
 ![terraform-visualization](docs/images/terraform-visualization.png)
 
