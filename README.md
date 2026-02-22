@@ -442,113 +442,131 @@ flowchart TB
 This repo creates a multi-VPC architecture where Confluent Cloud Enterprise Kafka clusters are reachable exclusively over private network path that never traverses the public internet.
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#172554', 'primaryTextColor': '#fff', 'primaryBorderColor': '#1e40af', 'lineColor': '#6366f1', 'secondaryColor': '#f0f9ff', 'tertiaryColor': '#e0f2fe', 'noteBkgColor': '#fef3c7', 'noteTextColor': '#78350f', 'fontSize': '14px'}}}%%
-
 graph TB
-    subgraph CC["☁️ Confluent Cloud"]
-        ENV["<b>non-prod Environment</b><br/>Stream Governance: Essentials"]
-        PLATT["<b>PrivateLink Attachment</b><br/>AWS VPC Endpoint Service"]
-        SANDBOX_CL["<b>sandbox_cluster</b><br/>Enterprise · HIGH Availability"]
-        SHARED_CL["<b>shared_cluster</b><br/>Enterprise · HIGH Availability"]
-        ENV --> SANDBOX_CL
-        ENV --> SHARED_CL
-        ENV --> PLATT
+    subgraph CC["☁️ Confluent Cloud (non-prod environment)"]
+        GW["🔀 PrivateLink Gateway\nnon-prod-privatelink-gateway"]
+        subgraph SBcluster["Sandbox Kafka Cluster\n(Enterprise · HIGH availability)"]
+            SBAP["Access Point\nccloud-accesspoint-sandbox"]
+        end
+        subgraph SHcluster["Shared Kafka Cluster\n(Enterprise · HIGH availability)"]
+            SHAP["Access Point\nccloud-accesspoint-shared"]
+        end
+        GW --> SBAP
+        GW --> SHAP
     end
 
-    subgraph AWS["☁️ AWS Region"]
-
-        subgraph TGW_BOX["🔀 Transit Gateway"]
-            TGW["<b>Transit Gateway</b><br/>Central routing hub"]
-            TGW_RT["<b>TGW Route Table</b><br/>Propagated routes"]
-        end
-
-        subgraph SANDBOX_VPC["🔒 Sandbox VPC · 10.0.0.0/20"]
-            S_SUB1["Private Subnet AZ-1"]
-            S_SUB2["Private Subnet AZ-2"]
-            S_SUB3["Private Subnet AZ-3"]
-            S_VPCE["<b>VPC Endpoint</b><br/>Interface type"]
-            S_SG["<b>Security Group</b><br/>Ports: 443, 9092, 53"]
-            S_SUB1 & S_SUB2 & S_SUB3 --> S_VPCE
-            S_VPCE --> S_SG
-        end
-
-        subgraph SHARED_VPC["🔒 Shared VPC · 10.1.0.0/20"]
-            SH_SUB1["Private Subnet AZ-1"]
-            SH_SUB2["Private Subnet AZ-2"]
-            SH_SUB3["Private Subnet AZ-3"]
-            SH_VPCE["<b>VPC Endpoint</b><br/>Interface type"]
-            SH_SG["<b>Security Group</b><br/>Ports: 443, 9092, 53"]
-            SH_SUB1 & SH_SUB2 & SH_SUB3 --> SH_VPCE
-            SH_VPCE --> SH_SG
-        end
-
-        subgraph DNS_LAYER["📡 Centralized DNS"]
-            PHZ["<b>Route 53 Private Hosted Zone</b><br/>Confluent PrivateLink domain"]
-            ZONAL["Zonal CNAME Records<br/>*.az-id.domain"]
-            WILDCARD["Wildcard CNAME Record<br/>*.domain"]
-            SYSTEM_RULE["<b>SYSTEM Resolver Rule</b><br/>Override FORWARD rules"]
-            PHZ --> ZONAL & WILDCARD
-            PHZ --> SYSTEM_RULE
-        end
-
-        subgraph INFRA_VPCS["🏗️ Infrastructure VPCs"]
-            TFC_VPC["<b>TFC Agent VPC</b><br/>Terraform Cloud Agents"]
-            DNS_VPC["<b>DNS VPC</b><br/>Centralized DNS"]
-            VPN_VPC["<b>VPN VPC</b><br/>Client VPN Endpoint"]
-        end
-
+    subgraph TGW["🔁 AWS Transit Gateway"]
+        TGWRT["TGW Route Table\n(associations + propagations)"]
     end
 
-    subgraph USER["👤 User Access"]
-        VPN_CLIENT["<b>VPN Client</b><br/>Developer workstation"]
+    subgraph SB_VPC["🟦 Sandbox PrivateLink VPC\n10.0.0.0/20"]
+        SB_SN["Private Subnets ×3\n(multi-AZ)"]
+        SB_EP["VPC Endpoint\n(Interface · PrivateLink)"]
+        SB_SG["Security Group\nports 443, 9092, 53/UDP, 53/TCP"]
+        SB_RT["Route Tables ×3"]
+        SB_EP --> SB_SG
+        SB_SN --> SB_EP
+        SB_SN --> SB_RT
     end
 
-    subgraph TFC["⚙️ Terraform Cloud"]
-        TFC_WORKSPACE["<b>Workspace</b><br/>Agent execution mode"]
-        AGENT_POOL["<b>Agent Pool</b><br/>signalroom-iac-tfc-agents-pool"]
-        TFC_WORKSPACE --> AGENT_POOL
+    subgraph SH_VPC["🟩 Shared PrivateLink VPC\n10.1.0.0/20"]
+        SH_SN["Private Subnets ×3\n(multi-AZ)"]
+        SH_EP["VPC Endpoint\n(Interface · PrivateLink)"]
+        SH_SG["Security Group\nports 443, 9092, 53/UDP, 53/TCP"]
+        SH_RT["Route Tables ×3"]
+        SH_EP --> SH_SG
+        SH_SN --> SH_EP
+        SH_SN --> SH_RT
     end
 
-    %% PrivateLink connections
-    S_VPCE -.->|"AWS PrivateLink"| PLATT
-    SH_VPCE -.->|"AWS PrivateLink"| PLATT
+    subgraph VPN_VPC["🔐 VPN VPC"]
+        CVPN["AWS Client VPN Endpoint\n(VPN routes + auth rules)"]
+        DEVS["👩‍💻 Developer / Remote Clients"]
+        DEVS -->|"VPN tunnel"| CVPN
+    end
 
-    %% Transit Gateway connections
-    SANDBOX_VPC <-->|"TGW Attachment"| TGW
-    SHARED_VPC <-->|"TGW Attachment"| TGW
-    TFC_VPC <-->|"TGW Attachment"| TGW
-    DNS_VPC <-->|"TGW Attachment"| TGW
-    VPN_VPC <-->|"TGW Attachment"| TGW
+    subgraph TFC_VPC["⚙️ TFC Agent VPC"]
+        TFCA["Terraform Cloud Agent\n(ECS Fargate)"]
+    end
 
-    %% DNS associations
-    SYSTEM_RULE -.->|"PHZ Association"| TFC_VPC
-    SYSTEM_RULE -.->|"PHZ Association"| DNS_VPC
-    SYSTEM_RULE -.->|"PHZ Association"| VPN_VPC
-    SYSTEM_RULE -.->|"PHZ Association"| SANDBOX_VPC
-    SYSTEM_RULE -.->|"PHZ Association"| SHARED_VPC
+    subgraph DNS_VPC["🌐 DNS VPC"]
+        R53R["Route53 Resolver\n(Inbound / Outbound)"]
+    end
 
-    %% User access
-    VPN_CLIENT -->|"Client VPN"| VPN_VPC
+    subgraph DNS_SB["Route53 — Sandbox DNS"]
+        SB_PHZ["Private Hosted Zone\n(access point domain)"]
+        SB_WILD["Wildcard CNAME *.domain\n→ VPC Endpoint DNS"]
+        SB_SYSRULE["Resolver SYSTEM Rule\n(domain → local PHZ)"]
+        SB_GLBFWD["Resolver FWD Rule\n(Confluent global domain)"]
+        SB_PHZ --> SB_WILD
+    end
 
-    %% TFC Agent connection
-    AGENT_POOL -->|"Agent runs in"| TFC_VPC
+    subgraph DNS_SH["Route53 — Shared DNS"]
+        SH_PHZ["Private Hosted Zone\n(access point domain)"]
+        SH_WILD["Wildcard CNAME *.domain\n→ VPC Endpoint DNS"]
+        SH_SYSRULE["Resolver SYSTEM Rule\n(domain → local PHZ)"]
+        SH_GLBFWD["Resolver FWD Rule\n(Confluent global domain)"]
+        SH_PHZ --> SH_WILD
+    end
 
-    %% Styling
-    classDef confluent fill:#172554,stroke:#1e40af,color:#fff,stroke-width:2px
-    classDef vpc fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px
-    classDef tgw fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px
-    classDef dns fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,stroke-width:2px
-    classDef infra fill:#f0f9ff,stroke:#0284c7,color:#0c4a6e,stroke-width:2px
-    classDef user fill:#fce7f3,stroke:#db2777,color:#831843,stroke-width:2px
-    classDef tfc fill:#f5f5f4,stroke:#78716c,color:#292524,stroke-width:2px
+    %% PrivateLink connectivity
+    SB_EP <-->|"AWS PrivateLink"| SBAP
+    SH_EP <-->|"AWS PrivateLink"| SHAP
 
-    class ENV,PLATT,SANDBOX_CL,SHARED_CL confluent
-    class S_SUB1,S_SUB2,S_SUB3,S_VPCE,S_SG,SH_SUB1,SH_SUB2,SH_SUB3,SH_VPCE,SH_SG vpc
-    class TGW,TGW_RT tgw
-    class PHZ,ZONAL,WILDCARD,SYSTEM_RULE dns
-    class TFC_VPC,DNS_VPC,VPN_VPC infra
-    class VPN_CLIENT user
-    class TFC_WORKSPACE,AGENT_POOL tfc
+    %% TGW attachments
+    SB_SN <-->|"TGW attachment"| TGW
+    SH_SN <-->|"TGW attachment"| TGW
+    VPN_VPC <-->|"TGW routes"| TGW
+    TFC_VPC <-->|"TGW routes"| TGW
+    DNS_VPC <-->|"TGW routes"| TGW
+
+    %% Route cross-references via TGW
+    SB_RT -->|"→ TFC Agent CIDR via TGW"| TGW
+    SB_RT -->|"→ VPN CIDR via TGW"| TGW
+    SB_RT -->|"→ DNS CIDR via TGW"| TGW
+    SH_RT -->|"→ TFC Agent CIDR via TGW"| TGW
+    SH_RT -->|"→ VPN CIDR via TGW"| TGW
+    SH_RT -->|"→ DNS CIDR via TGW"| TGW
+
+    %% PHZ associations
+    SB_PHZ -.->|"PHZ assoc"| SB_VPC
+    SB_PHZ -.->|"PHZ assoc"| DNS_VPC
+    SB_PHZ -.->|"PHZ assoc"| VPN_VPC
+    SB_PHZ -.->|"PHZ assoc"| TFC_VPC
+    SH_PHZ -.->|"PHZ assoc"| SH_VPC
+    SH_PHZ -.->|"PHZ assoc"| DNS_VPC
+    SH_PHZ -.->|"PHZ assoc"| VPN_VPC
+    SH_PHZ -.->|"PHZ assoc"| TFC_VPC
+
+    %% Resolver rule associations
+    SB_SYSRULE -.->|"assoc"| DNS_VPC
+    SB_SYSRULE -.->|"assoc"| VPN_VPC
+    SB_SYSRULE -.->|"assoc"| TFC_VPC
+    SB_SYSRULE -.->|"assoc"| SB_VPC
+    SB_GLBFWD -.->|"assoc"| SB_VPC
+    SH_SYSRULE -.->|"assoc"| DNS_VPC
+    SH_SYSRULE -.->|"assoc"| VPN_VPC
+    SH_SYSRULE -.->|"assoc"| TFC_VPC
+    SH_SYSRULE -.->|"assoc"| SH_VPC
+    SH_GLBFWD -.->|"assoc"| SH_VPC
+
+    %% TFC / Infra provisioning
+    TFCA -->|"provision via Terraform Cloud"| SB_VPC
+    TFCA -->|"provision via Terraform Cloud"| SH_VPC
+
+    classDef confluent fill:#0073e6,color:#fff,stroke:#005bb5
+    classDef aws fill:#FF9900,color:#000,stroke:#cc7a00
+    classDef vpn fill:#2e7d32,color:#fff,stroke:#1b5e20
+    classDef dns fill:#6a1b9a,color:#fff,stroke:#4a148c
+    classDef tfc fill:#5c4ee5,color:#fff,stroke:#3d35b5
+    classDef tgw fill:#bf360c,color:#fff,stroke:#870000
+
+    class GW,SBAP,SHAP confluent
+    class SB_EP,SB_SG,SH_EP,SH_SG aws
+    class CVPN,DEVS vpn
+    class SB_PHZ,SB_WILD,SB_SYSRULE,SB_GLBFWD,SH_PHZ,SH_WILD,SH_SYSRULE,SH_GLBFWD,R53R dns
+    class TFCA tfc
+    class TGW,TGWRT tgw
 ```
 
 ### **2.1 Why This Architecture?**
