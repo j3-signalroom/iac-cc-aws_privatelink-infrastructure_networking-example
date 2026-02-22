@@ -4,12 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is base on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.03.00.000] - TBD
+## [1.00.00.000] - TBD
 ### Added
 - Issue [`#28`](https://github.com/j3-signalroom/iac-cc-aws_privatelink-infrastructure_networking-example/issues/28)
 - Issue [`#29`](https://github.com/j3-signalroom/iac-cc-aws_privatelink-infrastructure_networking-example/issues/29)
 - Issue [`#33`](https://github.com/j3-signalroom/iac-cc-aws_privatelink-infrastructure_networking-example/issues/33)
 - Issue [`#37`](https://github.com/j3-signalroom/iac-cc-aws_privatelink-infrastructure_networking-example/issues/37)
+- Issue [`#51`](https://github.com/j3-signalroom/iac-cc-aws_privatelink-infrastructure_networking-example/issues/51)
 
 ### Changed
 - Issue [`#31`](https://github.com/j3-signalroom/iac-cc-aws_privatelink-infrastructure_networking-example/issues/31)
