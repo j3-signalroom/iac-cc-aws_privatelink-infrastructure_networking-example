@@ -4,11 +4,11 @@ resource "aws_vpc" "privatelink" {
   enable_dns_support   = true
 
   tags = {
-    Name = var.vpc_name
+    Name      = var.vpc_name
+    ManagedBy = "Terraform Cloud"
   }
 }
 
-# Create VPC Endpoint
 resource "aws_vpc_endpoint" "privatelink" {
   vpc_id              = aws_vpc.privatelink.id
   service_name        = var.privatelink_service_name
@@ -19,8 +19,9 @@ resource "aws_vpc_endpoint" "privatelink" {
   subnet_ids = aws_subnet.private[*].id
   
   tags = {
-    Name        = "ccloud-privatelink-${var.vpc_name}"
-    VPC         = aws_vpc.privatelink.id
+    Name      = "ccloud-privatelink-${var.vpc_name}"
+    VPC       = aws_vpc.privatelink.id
+    ManagedBy = "Terraform Cloud"
   }
 
   depends_on = [
@@ -39,6 +40,7 @@ resource "aws_subnet" "private" {
     Name          = "${var.vpc_name}-private-subnet-${count.index + 1}"
     Type          = "private"
     AvailableZone = local.available_zones[count.index]
+    ManagedBy     = "Terraform Cloud"
   }
 }
 
@@ -49,7 +51,8 @@ resource "aws_route_table" "private" {
   vpc_id = aws_vpc.privatelink.id
   
   tags = {
-    Name = "${var.vpc_name}-private-rt-${count.index + 1}"
+    Name      = "${var.vpc_name}-private-rt-${count.index + 1}"
+    ManagedBy = "Terraform Cloud"
   }
 }
 
