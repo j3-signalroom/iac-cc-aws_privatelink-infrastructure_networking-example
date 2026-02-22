@@ -1,11 +1,31 @@
-output "all_sandbox_cluster_attributes" {
-  description = "All attributes of the sandbox cluster"
+output "all_sandbox_vpc_attributes" {
+  description = "All attributes of the sandbox VPC"
   value       = module.sandbox_vpc
 }
 
-output "all_shared_cluster_attributes" {
-  description = "All attributes of the shared cluster"
+output "all_sandbox_access_point_attributes" {
+  description = "All attributes of the sandbox Access Point"
+  value       = module.sandbox_access_point
+}
+
+output "all_sandbox_dns_attributes" {
+  description = "All attributes of the sandbox DNS"
+  value       = module.sandbox_dns
+}
+
+output "all_shared_vpc_attributes" {
+  description = "All attributes of the shared VPC"
   value       = module.shared_vpc
+}
+
+output "all_shared_access_point_attributes" {
+  description = "All attributes of the shared Access Point"
+  value       = module.shared_access_point
+}
+
+output "all_shared_dns_attributes" {
+  description = "All attributes of the shared DNS"
+  value       = module.shared_dns
 }
 
 output "tfc_agent_vpc_cidr_block" {
@@ -41,4 +61,14 @@ output "confluent_sandbox_kafka_cluster_id" {
 output "confluent_shared_kafka_cluster_id" {
   description = "Confluent Cloud Shared Kafka Cluster ID"
   value       = confluent_kafka_cluster.shared_cluster.id
+}
+
+output "sandbox_kafka_cluster_endpoints" {
+  description = "Sandbox Kafka Cluster Endpoints"
+  value       = confluent_kafka_cluster.sandbox_cluster.endpoints
+}
+
+output "shared_kafka_cluster_endpoints" {
+  description = "Shared Kafka Cluster Endpoints"
+  value       = confluent_kafka_cluster.shared_cluster.endpoints
 }

@@ -6,6 +6,11 @@ resource "aws_route53_zone" "privatelink" {
     vpc_id = var.vpc_id
   }
 
+  # Prevent Terraform from destroying associations managed by aws_route53_zone_association
+  lifecycle {
+    ignore_changes = [vpc]
+  }
+
   tags = {
     ManagedBy = "Terraform Cloud"
   }
@@ -28,6 +33,11 @@ resource "aws_route53_zone_association" "confluent_to_dns_vpc" {
 resource "aws_route53_zone_association" "confluent_to_vpn_vpc" {
   zone_id = aws_route53_zone.privatelink.zone_id
   vpc_id  = var.vpn_vpc_id
+}
+
+resource "aws_route53_zone_association" "confluent_to_tfc_vpc" {
+  zone_id = aws_route53_zone.privatelink.zone_id
+  vpc_id  = var.tfc_agent_vpc_id
 }
 
 # SYSTEM resolver rule — domain provided by root after access point is created
