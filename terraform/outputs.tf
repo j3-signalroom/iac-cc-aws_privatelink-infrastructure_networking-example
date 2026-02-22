@@ -74,10 +74,10 @@ output "shared_kafka_cluster_endpoints" {
 }
 
 output "deploy_script_arguments" {
-  description = "Deploy script arguments for Confluent Cloud resources"
+  description = "iac-cc-app_resources-example deploy.sh argument with values"
   value = <<-EOT
     =======================================================================================
-    Helpful arguments for deploy.sh scripts
+    iac-cc-app_resources-example deploy.sh argument with values
     =======================================================================================
       --confluent-environment-id=${confluent_environment.non_prod.id} \
       --confluent-sandbox-kafka-cluster-id=${confluent_kafka_cluster.sandbox_cluster.id} \
