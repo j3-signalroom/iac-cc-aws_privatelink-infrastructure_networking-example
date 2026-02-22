@@ -9,8 +9,9 @@ resource "aws_security_group" "privatelink" {
   }
   
   tags = {
-    Name        = "ccloud-privatelink-${var.vpc_name}"
-    VPC         = aws_vpc.privatelink.id
+    Name      = "ccloud-privatelink-${var.vpc_name}"
+    ManagedBy = "Terraform Cloud"
+    VPC       = aws_vpc.privatelink.id
   }
 }
 

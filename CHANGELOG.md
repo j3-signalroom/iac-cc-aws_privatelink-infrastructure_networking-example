@@ -15,6 +15,7 @@ The format is base on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), 
 - Issue [`#31`](https://github.com/j3-signalroom/iac-cc-aws_privatelink-infrastructure_networking-example/issues/31)
 - Issue [`#35`](https://github.com/j3-signalroom/iac-cc-aws_privatelink-infrastructure_networking-example/issues/35)
 - Issue [`#40`](https://github.com/j3-signalroom/iac-cc-aws_privatelink-infrastructure_networking-example/issues/40)
+- Issue [`#46`](https://github.com/j3-signalroom/iac-cc-aws_privatelink-infrastructure_networking-example/issues/46)
 
 ## [0.02.00.000] - 2026-02-17
 ### Changed
