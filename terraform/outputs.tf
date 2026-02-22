@@ -72,3 +72,18 @@ output "shared_kafka_cluster_endpoints" {
   description = "Shared Kafka Cluster Endpoints"
   value       = confluent_kafka_cluster.shared_cluster.endpoints
 }
+
+output "deploy_script_arguments" {
+  description = "Deploy script arguments for Confluent Cloud resources"
+  value = <<-EOT
+    =======================================================================================
+    Helpful arguments for deploy.sh scripts
+    =======================================================================================
+      --confluent-environment-id=${confluent_environment.non_prod.id} \
+      --confluent-sandbox-kafka-cluster-id=${confluent_kafka_cluster.sandbox_cluster.id} \
+      --confluent-shared-kafka-cluster-id=${confluent_kafka_cluster.shared_cluster.id} \
+      --confluent-sandbox-access-code-id=${confluent_access_code.sandbox_access_code.id} \
+      --confluent-shared-access-code-id=${confluent_access_code.shared_access_code.id}
+    =======================================================================================
+  EOT
+}
