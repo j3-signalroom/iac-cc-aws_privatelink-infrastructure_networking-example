@@ -65,12 +65,12 @@ output "confluent_shared_kafka_cluster_id" {
 
 output "sandbox_kafka_cluster_endpoints" {
   description = "Sandbox Kafka Cluster Endpoints"
-  value       = confluent_kafka_cluster.sandbox_cluster.endpoints
+  value       = jsonencode(confluent_kafka_cluster.sandbox_cluster.endpoints)
 }
 
 output "shared_kafka_cluster_endpoints" {
   description = "Shared Kafka Cluster Endpoints"
-  value       = confluent_kafka_cluster.shared_cluster.endpoints
+  value       = jsonencode(confluent_kafka_cluster.shared_cluster.endpoints)
 }
 
 output "deploy_script_arguments" {
