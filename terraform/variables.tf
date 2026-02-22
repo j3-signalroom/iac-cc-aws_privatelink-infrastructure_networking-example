@@ -136,3 +136,8 @@ variable "vpn_target_subnet_ids" {
   description = "Comma-separated list of VPN associated subnet IDs to create routes through"
   type        = string
 }
+
+variable "confluent_glb_resolver_rule_id" {
+  description = "Confluent GLB Resolver Rule ID for adding rules to PrivateLink VPCs"
+  type        = string
+}

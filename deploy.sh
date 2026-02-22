@@ -19,6 +19,7 @@
 #                                --vpn-vpc-rt-ids=<VPN_VPC_RT_IDs>
 #                                --vpn-endpoint-id=<VPN_ENDPOINT_ID>
 #                                --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs>
+#                                --confluent-glb-resolver-rule-id=<CONFLUENT_GLB_RESOLVER_RULE_ID>
 #
 #
 
@@ -55,7 +56,7 @@ TERRAFORM_DIR="$SCRIPT_DIR/terraform"
 
 print_info "Terraform Directory: $TERRAFORM_DIR"
 
-argument_list="--profile=<SSO_PROFILE_NAME> --confluent-api-key=<CONFLUENT_API_KEY> --confluent-api-secret=<CONFLUENT_API_SECRET> --tfe-token=<TFE_TOKEN> --tgw-id=<TGW_ID> --tgw-rt-id=<TGW_RT_ID> --tfc-agent-vpc-id=<TFC_AGENT_VPC_ID> --tfc-agent-vpc-rt-ids=<TFC_AGENT_VPC_RT_IDs> --dns-vpc-id=<DNS_VPC_ID> --dns-vpc-rt-ids=<DNS_VPC_RT_IDs> --vpn-vpc-id=<VPN_VPC_ID> --vpn-vpc-rt-ids=<VPN_VPC_RT_IDs> --vpn-endpoint-id=<VPN_ENDPOINT_ID> --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs>"
+argument_list="--profile=<SSO_PROFILE_NAME> --confluent-api-key=<CONFLUENT_API_KEY> --confluent-api-secret=<CONFLUENT_API_SECRET> --tfe-token=<TFE_TOKEN> --tgw-id=<TGW_ID> --tgw-rt-id=<TGW_RT_ID> --tfc-agent-vpc-id=<TFC_AGENT_VPC_ID> --tfc-agent-vpc-rt-ids=<TFC_AGENT_VPC_RT_IDs> --dns-vpc-id=<DNS_VPC_ID> --dns-vpc-rt-ids=<DNS_VPC_RT_IDs> --vpn-vpc-id=<VPN_VPC_ID> --vpn-vpc-rt-ids=<VPN_VPC_RT_IDs> --vpn-endpoint-id=<VPN_ENDPOINT_ID> --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs> --confluent-glb-resolver-rule-id=<CONFLUENT_GLB_RESOLVER_RULE_ID>"
 
 # Check required command (create or destroy) was supplied
 case $1 in
@@ -67,7 +68,7 @@ case $1 in
     echo
     print_error "(Error Message 001)  You did not specify one of the commands: create | destroy."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0`=<create | destroy> $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0`=<create | destroy> $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
     ;;
@@ -88,6 +89,7 @@ vpn_vpc_id=""
 vpn_vpc_rt_ids=""
 vpn_endpoint_id=""
 vpn_target_subnet_ids=""
+confluent_glb_resolver_rule_id=""
 
 
 # Get the arguments passed by shift to remove the first word
@@ -137,11 +139,14 @@ do
         *"--vpn-target-subnet-ids="*)
             arg_length=24
             vpn_target_subnet_ids=${arg:$arg_length:$(expr ${#arg} - $arg_length)};;
+        *"--confluent-glb-resolver-rule-id="*)
+            arg_length=33
+            confluent_glb_resolver_rule_id=${arg:$arg_length:$(expr ${#arg} - $arg_length)};;
         *)
             echo
             print_error "(Error Message 002)  You included an invalid argument: $arg"
             echo
-            print_error "Usage:  Require all fourteen arguments ---> `basename $0`=<create | destroy> $argument_list"
+            print_error "Usage:  Require all fifteen arguments ---> `basename $0`=<create | destroy> $argument_list"
             echo
             exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
             ;;
@@ -154,7 +159,7 @@ then
     echo
     print_error "(Error Message 003)  You did not include the proper use of the --profile=<SSO_PROFILE_NAME> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -165,7 +170,7 @@ then
     echo
     print_error "(Error Message 004)  You did not include the proper use of the --confluent-api-key=<CONFLUENT_API_KEY> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -176,7 +181,7 @@ then
     echo
     print_error "(Error Message 005)  You did not include the proper use of the --confluent-api-secret=<CONFLUENT_API_SECRET> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -187,7 +192,7 @@ then
     echo
     print_error "(Error Message 006)  You did not include the proper use of the --tfe-token=<TFE_TOKEN> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -198,7 +203,7 @@ then
     echo
     print_error "(Error Message 007)  You did not include the proper use of the --tgw-id=<TGW_ID> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -209,7 +214,7 @@ then
     echo
     print_error "(Error Message 008)  You did not include the proper use of the --tgw-rt-id=<TGW_RT_ID> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -220,7 +225,7 @@ then
     echo
     print_error "(Error Message 009)  You did not include the proper use of the --tfc-agent-vpc-id=<TFC_AGENT_VPC_ID> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -231,7 +236,7 @@ then
     echo
     print_error "(Error Message 010)  You did not include the proper use of the --dns-vpc-id=<DNS_VPC_ID> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -242,7 +247,7 @@ then
     echo
     print_error "(Error Message 011)  You did not include the proper use of the --vpn-vpc-id=<VPN_VPC_ID> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -253,7 +258,7 @@ then
     echo
     print_error "(Error Message 012)  You did not include the proper use of the --tfc-agent-vpc-rt-ids=<TFC_AGENT_VPC_RT_IDs> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -264,7 +269,7 @@ then
     echo
     print_error "(Error Message 013)  You did not include the proper use of the --dns-vpc-rt-ids=<DNS_VPC_RT_IDs> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -275,7 +280,7 @@ then
     echo
     print_error "(Error Message 014)  You did not include the proper use of the --vpn-vpc-rt-ids=<VPN_VPC_RT_IDs> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -286,7 +291,7 @@ then
     echo
     print_error "(Error Message 015)  You did not include the proper use of the --vpn-endpoint-id=<VPN_ENDPOINT_ID> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -297,7 +302,18 @@ then
     echo
     print_error "(Error Message 016)  You did not include the proper use of the --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs> argument in the call."
     echo
-    print_error "Usage:  Require all fourteen arguments ---> `basename $0 $1` $argument_list"
+    print_error "Usage:  Require all fifteen arguments ---> `basename $0 $1` $argument_list"
+    echo
+    exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
+fi
+
+# Check required --confluent-glb-resolver-rule-id argument for the create action was supplied
+if [ -z "$confluent_glb_resolver_rule_id" ]
+then
+    echo
+    echo "(Error Message 017)  You did not include the proper use of the --confluent-glb-resolver-rule-id=<CONFLUENT_GLB_RESOLVER_RULE  ID> argument in the call."
+    echo
+    echo "Usage:  Require thirteen arguments ---> `basename $0 $1 $2` $arugument_list"
     echo
     exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
 fi
@@ -337,6 +353,7 @@ deploy_infrastructure() {
     # \nvpn_vpc_rt_ids=${vpn_vpc_rt_ids}\
     # \nvpn_endpoint_id=\"${vpn_endpoint_id}\"\
     # \nvpn_target_subnet_ids=\"${vpn_target_subnet_ids}\"\
+    # \nconfluent_glb_resolver_rule_id=\"${confluent_glb_resolver_rule_id}\"\
     # \ntgw_id=\"${tgw_id}\"
     # \ntgw_rt_id=\"${tgw_rt_id}\"" > terraform.tfvars
 
@@ -359,6 +376,7 @@ deploy_infrastructure() {
     export TF_VAR_vpn_vpc_rt_ids=${vpn_vpc_rt_ids}
     export TF_VAR_vpn_endpoint_id="${vpn_endpoint_id}"
     export TF_VAR_vpn_target_subnet_ids="${vpn_target_subnet_ids}"
+    export TF_VAR_confluent_glb_resolver_rule_id="${confluent_glb_resolver_rule_id}"
 
     # Initialize Terraform
     print_info "Initializing Terraform..."
@@ -420,7 +438,7 @@ undeploy_infrastructure() {
     export TF_VAR_vpn_vpc_rt_ids=${vpn_vpc_rt_ids}
     export TF_VAR_vpn_endpoint_id="${vpn_endpoint_id}"
     export TF_VAR_vpn_target_subnet_ids="${vpn_target_subnet_ids}"
-
+    export TF_VAR_confluent_glb_resolver_rule_id="${confluent_glb_resolver_rule_id}"
     # Destroy
     print_info "Running Terraform destroy..."
     

@@ -37,3 +37,8 @@ variable "vpn_vpc_id" {
   description = "VPN VPC ID (for tagging PHZ association purposes)"
   type        = string
 }
+
+variable "confluent_glb_resolver_rule_id" {
+  description = "Confluent GLB Resolver Rule ID for adding rules to PrivateLink VPCs"
+  type        = string
+}

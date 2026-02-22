@@ -601,7 +601,8 @@ The deploy.sh script handles authentication and Terraform execution:
                    --vpn-vpc-id=<VPN_VPC_ID> \
                    --vpn-vpc-rt-ids=<VPN_VPC_RT_IDs> \
                    --vpn-endpoint-id=<VPN_ENDPOINT_ID> \
-                   --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs>
+                   --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs> \
+                   --confluent-glb-resolver-rule-id=<CONFLUENT_GLB_RESOLVER_RULE_ID>
 ```
 
 Here's the argument table for `deploy.sh create` command:
@@ -622,8 +623,9 @@ Here's the argument table for `deploy.sh create` command:
 | `--vpn-vpc-rt-ids` | ✅ | Route table IDs for the VPN VPC (supports multiple, unquoted). Exported as `TF_VAR_vpn_vpc_rt_ids`. |
 | `--vpn-endpoint-id` | ✅ | AWS Client VPN endpoint ID. Exported as `TF_VAR_vpn_endpoint_id`. |
 | `--vpn-target-subnet-ids` | ✅ | Subnet IDs associated with the VPN endpoint target network. Exported as `TF_VAR_vpn_target_subnet_ids`. |
+| `--confluent-glb-resolver-rule-id` | ✅ | The ID of the SYSTEM resolver rule in Route 53 that ensures Confluent domain queries are resolved locally within AWS and not forwarded to external DNS servers. Exported as `TF_VAR_confluent_glb_resolver_rule_id`. |
 
-> All 14 arguments are required — the script exits with code `85` if any are missing.
+> All 15 arguments are required — the script exits with code `85` if any are missing.
 
 ### **3.2 Teardown the Infrastructure**
 ```bash
@@ -640,7 +642,8 @@ Here's the argument table for `deploy.sh create` command:
                     --vpn-vpc-id=<VPN_VPC_ID> \
                     --vpn-vpc-rt-ids=<VPN_VPC_RT_IDs> \
                     --vpn-endpoint-id=<VPN_ENDPOINT_ID> \
-                    --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs>
+                    --vpn-target-subnet-ids=<VPN_TARGET_SUBNET_IDs> \
+                    --confluent-glb-resolver-rule-id=<CONFLUENT_GLB_RESOLVER_RULE_ID>
 ```
 
 Here's the argument table for `deploy.sh destroy` command:
@@ -661,8 +664,9 @@ Here's the argument table for `deploy.sh destroy` command:
 | `--vpn-vpc-rt-ids` | ✅ | Route table IDs for the VPN VPC (supports multiple, unquoted). Exported as `TF_VAR_vpn_vpc_rt_ids`. |
 | `--vpn-endpoint-id` | ✅ | AWS Client VPN endpoint ID. Exported as `TF_VAR_vpn_endpoint_id`. |
 | `--vpn-target-subnet-ids` | ✅ | Subnet IDs associated with the VPN endpoint target network. Exported as `TF_VAR_vpn_target_subnet_ids`. |
+| `--confluent-glb-resolver-rule-id` | ✅ | The ID of the SYSTEM resolver rule in Route 53 that ensures Confluent domain queries are resolved locally within AWS and not forwarded to external DNS servers. Exported as `TF_VAR_confluent_glb_resolver_rule_id`. |
 
-> All 14 arguments are required — the script exits with code `85` if any are missing.
+> All 15 arguments are required — the script exits with code `85` if any are missing.
 
 ## **4.0 Resources**
 

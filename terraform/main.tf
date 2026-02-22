@@ -152,6 +152,8 @@ module "sandbox_dns" {
   tfc_agent_vpc_id         = var.tfc_agent_vpc_id 
   vpn_vpc_id               = var.vpn_vpc_id
 
+  confluent_glb_resolver_rule_id = var.confluent_glb_resolver_rule_id
+
   depends_on = [ 
     confluent_kafka_cluster.sandbox_cluster 
   ]
@@ -244,7 +246,8 @@ module "shared_dns" {
   tfc_agent_vpc_id         = var.tfc_agent_vpc_id 
   vpn_vpc_id               = var.vpn_vpc_id
 
-
+  confluent_glb_resolver_rule_id = var.confluent_glb_resolver_rule_id
+  
   depends_on = [ 
     confluent_kafka_cluster.shared_cluster 
   ]

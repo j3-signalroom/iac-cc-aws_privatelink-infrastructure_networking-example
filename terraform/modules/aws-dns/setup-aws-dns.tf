@@ -76,3 +76,9 @@ resource "aws_route53_resolver_rule_association" "confluent_private_local_vpc" {
   vpc_id           = var.vpc_id
   name             = "${var.vpc_name}-vpc-confluent-private"
 }
+
+resource "aws_route53_resolver_rule_association" "confluent_glb_forward" {
+  resolver_rule_id = var.confluent_glb_resolver_rule_id
+  vpc_id           = var.vpc_id
+  name             = "confluent-glb-forward-${var.vpc_name}"
+}
