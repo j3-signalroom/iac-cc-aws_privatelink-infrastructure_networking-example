@@ -137,6 +137,14 @@ do
         *"--vpn-target-subnet-ids="*)
             arg_length=24
             vpn_target_subnet_ids=${arg:$arg_length:$(expr ${#arg} - $arg_length)};;
+        *)
+            echo
+            print_error "(Error Message 016)  You included an invalid argument: $arg"
+            echo
+            print_error "Usage:  Require all twelve arguments ---> `basename $0`=<create | destroy> $argument_list"
+            echo
+            exit 85 # Common GNU/Linux Exit Code for 'Interrupted system call should be restarted'
+            ;;
     esac
 done
 
@@ -303,6 +311,7 @@ export AWS_REGION=$(aws configure get region $AWS_PROFILE)
 
 # Confluent Root Path
 confluent_secret_root_path=/confluent_cloud_resource/iac-cc-aws_privatelink-cluster_linking-example
+
 
 # Function to deploy infrastructure
 deploy_infrastructure() {
