@@ -154,15 +154,13 @@ flowchart TB
 
 ##### **1.1.1.2 Centralized DNS Resolution (Critical for PrivateLink)**
 - **Dedicated DNS VPC** with Route53 Inbound Resolver endpoints
-- **Private Hosted Zones** for `*.aws.confluent.cloud` domain
 - DNS forwarding rules route Confluent queries from all VPCs to the central DNS VPC
 - Route53 Outbound Resolver in VPN VPC forwards to DNS VPC resolver IPs
 
 ##### **1.1.1.3 DNS Forwarding Chain** (as documented in your outputs)
-1. Client queries `lkc-xxxxx.us-east-1.aws.private.confluent.cloud`
-2. VPN VPC's default DNS forwards to Route53 Outbound Resolver
-3. Outbound Resolver forwards to DNS VPC Inbound Resolver
-4. DNS VPC checks Private Hosted Zones → returns VPC Endpoint private IPs
+1. VPN VPC's default DNS forwards to Route53 Outbound Resolver
+2. Outbound Resolver forwards to DNS VPC Inbound Resolver
+3. DNS VPC checks Private Hosted Zones → returns VPC Endpoint private IPs
 
 ##### **1.1.1.4 VPC Endpoints (AWS PrivateLink)**
 - VPC Endpoints in workload VPCs connecting to Confluent's PrivateLink service
