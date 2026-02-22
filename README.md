@@ -1,9 +1,16 @@
 # IaC Confluent Cloud AWS Private Linking, Infrastructure and Networking Example
- Officially, [Febrary 13, 2026, Confluent Cloud](https://docs.confluent.io/cloud/current/release-notes/index.html#february-13-2026) announced support for Ingress Gateway and Ingress Gateway Access Points as the support resources for private connections between AWS and Confluent Cloud.  **_These replace PrivateLink Attachment (PLATT) resources and PLATT connections going forward._**
+Officially, on **February 13, 2026**, [Confluent](https://docs.confluent.io/cloud/current/release-notes/index.html#february-13-2026) announced support for **Ingress Gateway** and **Ingress Gateway Access Points** as the new standard resources for establishing private connectivity between **AWS** and Confluent Cloud. These capabilities supersede legacy **PrivateLink Attachment (PLATT)** resources and PLATT-based connections moving forward.
 
- > **Note:** Support for PLATT will end in a future release.
+> **Note:** Support for PLATT resources will be deprecated in a future release.
 
-This repo provides a comprehensive Terraform configuration example for building a fully private connectivity architecture between AWS and Confluent Cloud using AWS PrivateLink. It demonstrates how to leverage a centralized DNS architecture with Route 53 Private Hosted Zones and Transit Gateway to enable scalable, multi-VPC access to Confluent Cloud Kafka clusters over PrivateLink, without exposing any traffic to the public internet.
+This repository delivers a comprehensive, production-grade **Terraform** reference implementation for building a fully private connectivity architecture between Amazon Web Services (AWS) and Confluent Cloud using **AWS PrivateLink**. It demonstrates how to implement a centralized DNS strategy using **Route 53 Private Hosted Zones** and **AWS Transit Gateway** to enable secure, scalable, multi-VPC access to Confluent Cloud Kafka clusters—without exposing traffic to the public internet.
+
+The architecture models enterprise-ready patterns, including:
+
+* Centralized Private Hosted Zone (PHZ) management
+* Multi-VPC PrivateLink interface endpoint connectivity
+* Transit Gateway–based hub-and-spoke routing
+* Strict network isolation with no public ingress/egress paths
 
 Below is the Terraform resource visualization of the infrastructure:
 

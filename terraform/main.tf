@@ -16,6 +16,10 @@ terraform {
             source  = "confluentinc/confluent"
             version = "2.62.0"
         }
+        tfe = {
+            source = "hashicorp/tfe"
+            version = "~> 0.73.0"
+        }
     }
 }
 
@@ -46,6 +50,14 @@ resource "confluent_gateway" "non_prod" {
   depends_on = [ 
     confluent_environment.non_prod 
   ]
+}
+
+resource "time_sleep" "wait_for_gateway" {
+  depends_on = [ 
+    confluent_gateway.non_prod 
+  ]
+
+  create_duration = "2m"
 }
 
 # ===================================================================================
@@ -88,7 +100,7 @@ module "sandbox_vpc" {
   dns_vpc_cidr             = data.aws_vpc.dns.cidr_block
 
   depends_on = [ 
-    confluent_gateway.non_prod
+    time_sleep.wait_for_gateway
   ]
 }
 
@@ -182,7 +194,7 @@ module "shared_vpc" {
   dns_vpc_cidr             = data.aws_vpc.dns.cidr_block
 
   depends_on = [ 
-    confluent_gateway.non_prod
+    module.sandbox_dns
   ]
 }
 

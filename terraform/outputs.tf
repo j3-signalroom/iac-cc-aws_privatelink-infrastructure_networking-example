@@ -83,7 +83,7 @@ output "deploy_script_arguments" {
       --confluent-sandbox-kafka-cluster-id=${confluent_kafka_cluster.sandbox_cluster.id} \
       --confluent-shared-kafka-cluster-id=${confluent_kafka_cluster.shared_cluster.id} \
       --confluent-sandbox-access-code-id=${module.sandbox_access_point.access_point_id} \
-      --confluent-shared-access-code-id=${module.shared_access_point.access_point_id} \
+      --confluent-shared-access-code-id=${module.shared_access_point.access_point_id}
     =======================================================================================
   EOT
 }
