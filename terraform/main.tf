@@ -131,8 +131,6 @@ resource "confluent_kafka_cluster" "sandbox_cluster" {
     id = confluent_environment.non_prod.id
   }
 
-  
-
   depends_on = [ 
     module.sandbox_access_point 
   ]

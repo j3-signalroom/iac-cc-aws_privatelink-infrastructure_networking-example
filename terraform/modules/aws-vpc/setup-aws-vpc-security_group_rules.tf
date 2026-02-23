@@ -64,3 +64,19 @@ resource "aws_security_group_rule" "allow_dns_tcp" {
   cidr_blocks       = [var.tfc_agent_vpc_cidr, var.vpn_vpc_cidr, var.vpn_client_vpc_cidr, var.vpc_cidr]
   security_group_id = aws_security_group.privatelink.id
 }
+
+# Create the required SG rule for outbound traffic from the PrivateLink endpoint to clients
+resource "aws_security_group_rule" "allow_egress" {
+  description       = "Allow all outbound traffic from VPC Endpoint to clients"
+  type              = "egress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  cidr_blocks       = [
+    var.vpc_cidr,
+    var.tfc_agent_vpc_cidr,
+    var.vpn_vpc_cidr,
+    var.vpn_client_vpc_cidr
+  ]
+  security_group_id = aws_security_group.privatelink.id
+}
