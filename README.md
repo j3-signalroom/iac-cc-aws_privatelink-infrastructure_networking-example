@@ -1,9 +1,9 @@
-# IaC Confluent Cloud AWS Private Linking, Infrastructure and Networking Example
+# IaC Confluent Cloud AWS Ingress Private Linking, Infrastructure and Networking Example
 Officially, on **February 13, 2026**, [Confluent](https://docs.confluent.io/cloud/current/release-notes/index.html#february-13-2026) announced support for **Ingress Gateway** and **Ingress Gateway Access Points** as the new standard resources for establishing private connectivity between **AWS** and Confluent Cloud. These capabilities supersede legacy **PrivateLink Attachment (PLATT)** resources and PLATT-based connections moving forward.
 
 > **Note:** Support for PLATT resources will be deprecated in a future release.
 
-This repository delivers a comprehensive, production-grade **Terraform** reference implementation for building a fully private connectivity architecture between Amazon Web Services (AWS) and Confluent Cloud using **AWS PrivateLink**. It demonstrates how to implement a centralized DNS strategy using **Route 53 Private Hosted Zones** and **AWS Transit Gateway** to enable secure, scalable, multi-VPC access to Confluent Cloud Kafka clusters—without exposing traffic to the public internet.
+This repository delivers a comprehensive, production-grade **Terraform** reference implementation for building a fully private connectivity architecture between Amazon Web Services (AWS) and Confluent Cloud using **AWS Ingress PrivateLink**. It demonstrates how to implement a centralized DNS strategy using **Route 53 Private Hosted Zones** and **AWS Transit Gateway** to enable secure, scalable, multi-VPC access to Confluent Cloud Kafka clusters—without exposing traffic to the public internet.
 
 The architecture models enterprise-ready patterns, including:
 
@@ -24,9 +24,9 @@ Below is the Terraform resource visualization of the infrastructure:
     + [**1.1 Client VPN, Centralized DNS Server, and Transit Gateway**](#11-client-vpn-centralized-dns-server-and-transit-gateway)
         + [**1.1.1 Key Features Required for Confluent PrivateLink to Work**](#111-key-features-required-for-confluent-privatelink-to-work)
             - [**1.1.1.1 Hub-and-Spoke Network Architecture via Transit Gateway**](#1111-hub-and-spoke-network-architecture-via-transit-gateway)
-            - [**1.1.1.2 Centralized DNS Resolution (Critical for PrivateLink)**](#1112-centralized-dns-resolution-critical-for-privatelink)
+            - [**1.1.1.2 Centralized DNS Resolution (Critical for Ingress PrivateLink)**](#1112-centralized-dns-resolution-critical-for-ingress-privatelink)
             - [**1.1.1.3 DNS Forwarding Chain**](#1113-dns-forwarding-chain-as-documented-in-your-outputs)
-            - [**1.1.1.4 VPC Endpoints (AWS PrivateLink)**](#1114-vpc-endpoints-aws-privatelink)
+            - [**1.1.1.4 VPC Endpoints (AWS Ingress PrivateLink)**](#1114-vpc-endpoints-aws-ingress-privatelink)
             - [**1.1.1.5 Client VPN Integration**](#1115-client-vpn-integration)
             - [**1.1.1.6 Cross-VPC Routing**](#1116-cross-vpc-routing)
             - [**1.1.1.7 Security & Observability**](#1117-security--observability)
@@ -34,14 +34,14 @@ Below is the Terraform resource visualization of the infrastructure:
         + [**1.2.1 Key Features of the TFC Agent Setup**](#121-key-features-of-the-tfc-agent-setup)
             - [**1.2.1.1 Custom DHCP Options for DNS Resolution**](#1211-custom-dhcp-options-for-dns-resolution)
             - [**1.2.1.2 Transit Gateway Connectivity**](#1212-transit-gateway-connectivity)
-            - [**1.2.1.3 Security Group Configuration for Kafka/PrivateLink Traffic**](#1213-security-group-configuration-for-kafkaprivatelink-traffic)
+            - [**1.2.1.3 Security Group Configuration for Kafka/Ingress PrivateLink Traffic**](#1213-security-group-configuration-for-kafkaingress-privatelink-traffic)
             - [**1.2.1.4 AWS VPC Endpoints for Private Service Access**](#1214-aws-vpc-endpoints-for-private-service-access)
             - [**1.2.1.5 ECS Fargate Deployment Pattern**](#1215-ecs-fargate-deployment-pattern)
             - [**1.2.1.6 IAM Permissions for Infrastructure Management**](#1216-iam-permissions-for-infrastructure-management)
             - [**1.2.1.7 Network Architecture Summary**](#1217-network-architecture-summary)
 + [**2.0 Project's Architecture Overview**](#20-projects-architecture-overview)
     + [**2.1 Why This Architecture?**](#21-why-this-architecture)
-        + [**2.1.1 The Problem: PrivateLink Is VPC-Scoped, But Your Organization Isn't**](#211-the-problem-privatelink-is-vpc-scoped-but-your-organization-isnt)
+        + [**2.1.1 The Problem: Ingress PrivateLink Is VPC-Scoped, But Your Organization Isn't**](#211-the-problem-ingress-privatelink-is-vpc-scoped-but-your-organization-isnt)
         + [**2.1.2 The Solution: Centralized DNS with a Single PHZ and Smart CNAMEs**](#212-the-solution-centralized-dns-with-a-single-phz-and-smart-cnames)
         + [**2.1.3 The Critical Piece Most Architectures Miss: The SYSTEM Resolver Rule**](#213-the-critical-piece-most-architectures-miss-the-system-resolver-rule)
         + [**2.1.4 Why Not VPC Peering?**](#214-why-not-vpc-peering)
@@ -220,7 +220,7 @@ flowchart TB
     class CLIENT client
 ```
 
-#### **1.1.1 Key Features Required for Confluent PrivateLink to Work**
+#### **1.1.1 Key Features Required for Confluent Ingress PrivateLink to Work**
 
 ##### **1.1.1.1 Hub-and-Spoke Network Architecture via Transit Gateway**
 - Transit Gateway serves as the central routing hub connecting all VPCs
@@ -228,7 +228,7 @@ flowchart TB
 - DNS support enabled on the TGW (`dns_support = "enable"`)
 - Custom route tables for fine-grained traffic control between VPCs
 
-##### **1.1.1.2 Centralized DNS Resolution (Critical for PrivateLink)**
+##### **1.1.1.2 Centralized DNS Resolution (Critical for Ingress PrivateLink)**
 - **Dedicated DNS VPC** with Route53 Inbound Resolver endpoints
 - DNS forwarding rules route Confluent queries from all VPCs to the central DNS VPC
 - Route53 Outbound Resolver in VPN VPC forwards to DNS VPC resolver IPs
@@ -238,8 +238,8 @@ flowchart TB
 2. Outbound Resolver forwards to DNS VPC Inbound Resolver
 3. DNS VPC checks Private Hosted Zones → returns VPC Endpoint private IPs
 
-##### **1.1.1.4 VPC Endpoints (AWS PrivateLink)**
-- VPC Endpoints in workload VPCs connecting to Confluent's PrivateLink service
+##### **1.1.1.4 VPC Endpoints (AWS Ingress PrivateLink)**
+- VPC Endpoints in workload VPCs connecting to Confluent's Ingress PrivateLink service
 - Security groups allowing traffic from authorized sources (VPN clients, TFC agents)
 
 ##### **1.1.1.5 Client VPN Integration**
@@ -409,12 +409,12 @@ flowchart TB
 - Routes added from private subnets to: DNS VPC, Client VPN VPC, and all Workload VPCs containing PrivateLink endpoints
 - Flattened route map pattern (`for_each`) ensures routes are created for every workload VPC CIDR
 
-##### **1.2.1.3 Security Group Configuration for Kafka/PrivateLink Traffic**
+##### **1.2.1.3 Security Group Configuration for Kafka/Ingress PrivateLink Traffic**
 - **TFC Agent Security Group** with egress rules for:
   - HTTPS (443) and Kafka (9092) to each workload VPC CIDR
   - DNS (UDP/TCP 53) to DNS VPC CIDR specifically
   - General HTTPS/HTTP for Terraform Cloud API and package downloads
-- **Confluent PrivateLink Security Group** allowing inbound from TFC Agent SG on ports 443 and 9092
+- **Confluent Ingress PrivateLink Security Group** allowing inbound from TFC Agent SG on ports 443 and 9092
 
 ##### **1.2.1.4 AWS VPC Endpoints for Private Service Access**
 - **Interface endpoints** with private DNS enabled for: Secrets Manager, CloudWatch Logs, ECR API, ECR DKR
