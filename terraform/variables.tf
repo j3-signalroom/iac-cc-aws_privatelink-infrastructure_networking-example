@@ -63,11 +63,6 @@ variable "number_of_api_keys_to_retain" {
     }
 }
 
-variable "confluent_secret_root_path" {
-    description = "The root path in AWS Secrets Manager to store the Confluent Cloud Resource API keys."
-    type        = string
-}
-
 # ===================================================
 # TERRAFORM CONFIGURATION
 # ===================================================

@@ -3,7 +3,7 @@ terraform {
       organization = "signalroom"
 
         workspaces {
-            name = "iac-cc-aws-privatelink-infrastructure-networking-example"
+            name = "iac-cc-aws-ingress-privatelink-infrastructure-networking-example"
         }
     }
 

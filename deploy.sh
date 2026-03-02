@@ -2,7 +2,7 @@
 
 #
 # *** Purpose ***
-# To create or destroy the infrastructure for the Confluent Cloud Cluster Linking with PrivateLink example.
+# To create or destroy the infrastructure for the Confluent Cloud AWS Ingress PrivateLink Infrastructure & Networking example.
 #
 # *** Script Syntax ***
 # ./deploy.sh=<create | destroy> --profile=<SSO_PROFILE_NAME>
@@ -325,9 +325,6 @@ aws sso login $AWS_PROFILE
 eval $(aws2-wrap $AWS_PROFILE --export)
 export AWS_REGION=$(aws configure get region $AWS_PROFILE)
 
-# Confluent Root Path
-confluent_secret_root_path=/confluent_cloud_resource/iac-cc-aws_privatelink-infrastructure_networking-example
-
 
 # Function to deploy infrastructure
 deploy_infrastructure() {
@@ -343,7 +340,6 @@ deploy_infrastructure() {
     # \naws_session_token=\"${AWS_SESSION_TOKEN}\"\
     # \nconfluent_api_key=\"${confluent_api_key}\"\
     # \nconfluent_api_secret=\"${confluent_api_secret}\"\
-    # \nconfluent_secret_root_path=\"${confluent_secret_root_path}\"\
     # \ntfe_token=\"${tfe_token}\"\
     # \ndns_vpc_id=\"${dns_vpc_id}\"\
     # \ntfc_agent_vpc_id=\"${tfc_agent_vpc_id}\"\
@@ -364,7 +360,6 @@ deploy_infrastructure() {
     export TF_VAR_aws_session_token="${AWS_SESSION_TOKEN}"
     export TF_VAR_confluent_api_key="${confluent_api_key}"
     export TF_VAR_confluent_api_secret="${confluent_api_secret}"
-    export TF_VAR_confluent_secret_root_path="${confluent_secret_root_path}"
     export TF_VAR_tfe_token="${tfe_token}"
     export TF_VAR_tgw_id="${tgw_id}"
     export TF_VAR_tgw_rt_id="${tgw_rt_id}"
@@ -426,7 +421,6 @@ undeploy_infrastructure() {
     export TF_VAR_aws_session_token="${AWS_SESSION_TOKEN}"
     export TF_VAR_confluent_api_key="${confluent_api_key}"
     export TF_VAR_confluent_api_secret="${confluent_api_secret}"
-    export TF_VAR_confluent_secret_root_path="${confluent_secret_root_path}"
     export TF_VAR_tfe_token="${tfe_token}"
     export TF_VAR_tgw_id="${tgw_id}"
     export TF_VAR_tgw_rt_id="${tgw_rt_id}"
