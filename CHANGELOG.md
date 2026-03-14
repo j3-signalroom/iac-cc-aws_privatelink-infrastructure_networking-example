@@ -7,6 +7,7 @@ The format is base on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), 
 ## [1.05.00.000] - 2026-03-14
 ### Added
 - Issue [`#74`](https://github.com/j3-signalroom/iac-cc-aws_ingress_privatelink-infrastructure_networking-example/issues/74)
+- Issue [`#75`](https://github.com/j3-signalroom/iac-cc-aws_ingress_privatelink-infrastructure_networking-example/issues/75)
 
 ## [1.04.00.000] - 2026-03-05
 ### Added
