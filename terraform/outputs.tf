@@ -78,6 +78,16 @@ output "shared_kafka_cluster_endpoints" {
   value       = jsonencode(confluent_kafka_cluster.shared_cluster.endpoints)
 }
 
+output "kms_key_arn" {
+  description = "AWS KMS key ARN used for Confluent Cloud BYOK encryption"
+  value       = local.kms_key_arn
+}
+
+output "confluent_byok_key_id" {
+  description = "Confluent Cloud BYOK key ID"
+  value       = confluent_byok_key.aws.id
+}
+
 output "deploy_script_arguments" {
   description = "iac-cc-app_resources-example deploy.sh argument with values"
   value = <<-EOT
